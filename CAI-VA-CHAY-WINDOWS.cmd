@@ -18,7 +18,7 @@ if errorlevel 1 (
   exit /b 1
 )
 :ready
-start "" "http://127.0.0.1:521/"
-echo Muse Canvas: http://127.0.0.1:521/
+start "" "http://127.0.0.1:1521/"
+echo Muse Canvas: http://127.0.0.1:1521/
 echo Giu hai cua so Muse API va Muse Canvas dang mo trong luc su dung.
 pause
