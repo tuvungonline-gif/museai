@@ -12,13 +12,13 @@ function Test-LocalPort([int] $port) {
 }
 do {
     $api = Test-LocalPort 1314
-    $canvas = Test-LocalPort 521
+    $canvas = Test-LocalPort 1521
     if ($api -and $canvas) {
-        Write-Host 'Muse API (1314) va Muse Canvas (521) dang chay.'
+        Write-Host 'Muse API (1314) va Muse Canvas (1521) dang chay.'
         exit 0
     }
     if ($Quick) { break }
     Start-Sleep -Seconds 1
 } while ((Get-Date) -lt $deadline)
-Write-Host "Chua san sang: API 1314=$api; Canvas 521=$canvas. Xem loi trong hai cua so chuong trinh."
+Write-Host "Chua san sang: API 1314=$api; Canvas 1521=$canvas. Xem loi trong hai cua so chuong trinh."
 exit 1
