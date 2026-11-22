@@ -2,6 +2,17 @@
 
 ## Bản cài của tuvungonline-gif
 
+### Tên miền ms.ibeetool.com
+
+Cloudflare đã tạo zone `ibeetool.com` (đang chờ trỏ nameserver), Tunnel `museai-ms-ibeetool` và bản ghi `ms` tới Tunnel. Tunnel chuyển `/v1/*` đến Muse API tại `127.0.0.1:1314`, các đường còn lại đến Canvas tại `127.0.0.1:1521`. Trang quản trị API chỉ mở cục bộ trên máy Windows; tài khoản Muse và `.env` không tải lên Cloudflare.
+
+1. **Trên chính máy Windows chạy Muse**, vào [Cloudflare Tunnels](https://dash.cloudflare.com/?to=/:account/tunnels), chọn `museai-ms-ibeetool` → **Add a replica** → **Windows**. Cài `cloudflared` và chạy lệnh cài service trong CMD **Run as administrator** theo Cloudflare. Token `eyJ...` của Tunnel phải giữ kín, không nhập vào GitHub hoặc gửi qua chat. Giữ Windows và hai dịch vụ Muse chạy khi dùng tên miền.
+2. Tải bản mới của repo bằng **Code → Download ZIP**. Chép hai file `BAT-TEN-MIEN-WINDOWS.cmd` và `setup-domain-windows.ps1` vào **thư mục Muse đang chạy, nơi có `.env` và `test-output/`**. Đóng hai cửa sổ `Muse API` và `Muse Canvas`, bấm đúp `BAT-TEN-MIEN-WINDOWS.cmd`, sau đó bấm `CAI-VA-CHAY-WINDOWS.cmd` để khởi động lại. File này sao lưu `.env`, chuyển địa chỉ API và media sang `https://ms.ibeetool.com`, giữ nguyên khóa và tài khoản đã nhập.
+3. Trước khi chuyển nameserver, đối chiếu và sao chép **toàn bộ bản ghi DNS đang dùng** (website, email, MX, TXT, các subdomain khác) sang Cloudflare. Sau đó đổi nameserver của `ibeetool.com` tại nhà đăng ký sang `julissa.ns.cloudflare.com` và `trey.ns.cloudflare.com`. Chỉ đổi riêng CNAME tại nhà cung cấp DNS cũ sẽ không kích hoạt zone Cloudflare full setup này. Khi zone báo **Active**, mở `https://ms.ibeetool.com` để thử tạo ảnh và video.
+
+Nếu bạn muốn giữ DNS của `ibeetool.com` ở một tài khoản Cloudflare khác, cần chuyển cấu hình Tunnel và bản ghi `ms` sang đúng tài khoản đó thay vì đổi nameserver sang zone mới. Không xóa hai cửa sổ Muse; Windows tắt hoặc ngủ thì ứng dụng sẽ ngừng phục vụ.
+
+
 ### Chạy trên máy Windows của bạn
 
 1. Tải repo này bằng **Code → Download ZIP**, giải nén và bấm đúp `CAI-VA-CHAY-WINDOWS.cmd` (không cần VPS). Máy cần Python 3.10+ và Chrome hoặc Edge; Git không bắt buộc. Lần đầu bộ cài tải mã Muse-Canvas đúng commit đã ghim, cài thư viện, sinh khóa cục bộ rồi mở hai cửa sổ chương trình.
