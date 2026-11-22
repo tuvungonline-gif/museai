@@ -67,7 +67,7 @@ if (-not (Test-Path -LiteralPath $envFile)) {
         'MUSE2API_HOST=127.0.0.1',
         'MUSE2API_PORT=1314',
         'CANVAS_HOST=127.0.0.1',
-        'CANVAS_PORT=521',
+        'CANVAS_PORT=1521',
         'CANVAS_ACCESS_USER=admin',
         "CANVAS_ACCESS_PASSWORD=$password",
         'DEEPSEEK_API_KEY='
@@ -77,6 +77,12 @@ if (-not (Test-Path -LiteralPath $envFile)) {
     Write-Host "Mat khau canvas: $password"
     Write-Host "Trang them tai khoan Muse: http://127.0.0.1:1314/admin?key=$key"
 } else {
+    $existing = [IO.File]::ReadAllText($envFile)
+    $migrated = [Text.RegularExpressions.Regex]::Replace($existing, '(?m)^CANVAS_PORT=521\r?$', 'CANVAS_PORT=1521')
+    if ($migrated -ne $existing) {
+        [IO.File]::WriteAllText($envFile, $migrated, (New-Object System.Text.UTF8Encoding($false)))
+        Write-Host 'Da chuyen cong canvas 521 sang 1521, giu nguyen cac khoa dang nhap.'
+    }
     Write-Host 'Giu nguyen .env hien co. Xem CANVAS_ACCESS_PASSWORD trong file .env neu can dang nhap.'
 }
-Write-Host 'Da cai xong. Mo http://127.0.0.1:521/ sau khi hai cua so may chu khoi dong.'
+Write-Host 'Da cai xong. Mo http://127.0.0.1:1521/ sau khi hai cua so may chu khoi dong.'
