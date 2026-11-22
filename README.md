@@ -8,6 +8,8 @@
 2. Ghi lại mật khẩu canvas và địa chỉ quản trị được in trong cửa sổ đầu tiên. Mở `http://127.0.0.1:521/`, đăng nhập canvas bằng tên `admin` và mật khẩu vừa hiện. Trang chỉ dùng trên máy này; giữ hai cửa sổ chương trình đang mở.
 3. Trên trang quản trị `http://127.0.0.1:1314/admin?key=...`, dùng công cụ nhập phiên đăng nhập của **chính tài khoản muse.ai của bạn**, rồi thử tạo một ảnh và một video. Không nhập tài khoản Muse vào GitHub và không gửi cookie cho người khác. Nếu Muse yêu cầu đăng nhập lại, đăng nhập trong trình duyệt và cập nhật phiên ở quản trị.
 
+4. Sau khi trang quản trị báo tài khoản khả dụng, bấm đúp `TEST-TAO-ANH-VIDEO.cmd`. Bài thử gửi **một yêu cầu tạo ảnh và một yêu cầu tạo video từ chính ảnh đó** tới Muse, chờ kết quả tối đa 15 phút và lưu file vào `test-output/`. Bài thử có thể dùng hạn mức Muse của bạn; nếu video chưa có kết quả, ghi lại task ID và không gửi lại ngay để tránh tạo trùng.
+
 Chạy lại cùng file CMD khi máy khởi động lần sau. `.env` và phiên đăng nhập cục bộ không được đẩy lên GitHub. File `setup-windows.ps1` chỉ giữ cấu hình sẵn có; muốn đặt lại khóa phải tự sao lưu và chỉnh `.env`. Chưa có phiên Muse thì giao diện sẽ mở được nhưng thao tác tạo ảnh/video sẽ báo chưa có tài khoản. Nếu bạn muốn truy cập từ điện thoại hoặc internet, cần cấu hình HTTPS và lớp xác thực cho cả canvas lẫn gateway trước khi mở ra ngoài.
 
 Repo này lưu các tệp cấu hình và bản vá bảo vệ canvas. Sau khi clone, chạy `bash setup-source.sh` để tải **đúng commit upstream đã kiểm tra** và bổ sung mã nguồn vào thư mục hiện tại; lệnh này giữ nguyên các tệp đã có trong repo. Cần kết nối GitHub trong bước cài. Không đưa cookie Muse hoặc `.env` lên GitHub.
