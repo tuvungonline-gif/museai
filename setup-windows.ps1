@@ -12,7 +12,9 @@ if (-not $python) { throw 'Can cai Python 3.10+ va chon Add Python to PATH.' }
 $version = & $python.Source @pythonArgs -c 'import sys; print(sys.version_info.major * 100 + sys.version_info.minor)'
 if ($LASTEXITCODE -ne 0 -or [int]$version -lt 310) { throw 'Can Python 3.10 hoac moi hon.' }
 
-if (-not (Test-Path -LiteralPath (Join-Path $root 'muse2api\app.py'))) {
+if (-not (Test-Path -LiteralPath (Join-Path $root 'muse2api\app.py')) -or
+    -not (Test-Path -LiteralPath (Join-Path $root 'canvas\dist\index.html')) -or
+    -not (Test-Path -LiteralPath (Join-Path $root 'muse2api\requirements.txt'))) {
     $temp = Join-Path ([IO.Path]::GetTempPath()) ("muse-canvas-" + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $temp | Out-Null
     try {
