@@ -1,5 +1,13 @@
 # Muse—Canvas
 
+## Bản cài của tuvungonline-gif
+
+Repo này lưu các tệp cấu hình và bản vá bảo vệ canvas. Sau khi clone, chạy `bash setup-source.sh` để tải **đúng commit upstream đã kiểm tra** và bổ sung mã nguồn vào thư mục hiện tại; lệnh này giữ nguyên các tệp đã có trong repo. Cần kết nối GitHub trong bước cài. Không đưa cookie Muse hoặc `.env` lên GitHub.
+
+Để chạy thử trên máy riêng: cài Python 3.10+, Chromium; tạo môi trường Python `.venv` và cài `muse2api/requirements.txt`; tạo `.env` từ `.env.example`, đặt `CANVAS_HOST=127.0.0.1`, `MUSE2API_HOST=127.0.0.1`, mật khẩu canvas và khóa nội bộ ngẫu nhiên. Chạy `bash start-api.sh` và `bash start-canvas.sh` ở hai cửa sổ. Nhập phiên tài khoản Muse của chính bạn trong trang quản trị để thử tạo ảnh/video. Bản cài đầy đủ `install.sh` còn yêu cầu DeepSeek key để chạy Agent.
+
+Khi gắn tên miền, dùng HTTPS và đặt mật khẩu `CANVAS_ACCESS_PASSWORD`; trang canvas sẽ từ chối khởi động trên giao diện mạng nếu chưa đặt mật khẩu. Bảo vệ riêng địa chỉ API và trang quản trị bằng reverse proxy, không công khai cổng Chromium/CDP.
+
 > 把 **Muse(muse.ai)** 的生图 / 生视频 / 对话能力接进 **无限画布**，再用 **DeepSeek + Codex Agent** 让 AI 直接操作画布。
 >
 > A self-hosted AI canvas that connects **Muse(muse.ai)** image / video / chat models to **Infinite Canvas**, with a server-side **DeepSeek + Codex Agent** that can operate the canvas.
