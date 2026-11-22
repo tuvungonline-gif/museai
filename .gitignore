@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.venv/
+**/__pycache__/
+*.pyc
+**/canvas-agent.json
+**/.infinite-canvas/
+**/.codex/
+**/node_modules/
+**/.npm/
+**/logs/
+muse2api/data/
