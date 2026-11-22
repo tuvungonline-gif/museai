@@ -2,6 +2,14 @@
 
 ## Bản cài của tuvungonline-gif
 
+### Chạy trên máy Windows của bạn
+
+1. Tải repo này bằng **Code → Download ZIP**, giải nén và bấm đúp `CAI-VA-CHAY-WINDOWS.cmd` (không cần VPS). Máy cần Python 3.10+ và Chrome hoặc Edge; Git không bắt buộc. Lần đầu bộ cài tải mã Muse-Canvas đúng commit đã ghim, cài thư viện, sinh khóa cục bộ rồi mở hai cửa sổ chương trình.
+2. Ghi lại mật khẩu canvas và địa chỉ quản trị được in trong cửa sổ đầu tiên. Mở `http://127.0.0.1:521/`, đăng nhập canvas bằng tên `admin` và mật khẩu vừa hiện. Trang chỉ dùng trên máy này; giữ hai cửa sổ chương trình đang mở.
+3. Trên trang quản trị `http://127.0.0.1:1314/admin?key=...`, dùng công cụ nhập phiên đăng nhập của **chính tài khoản muse.ai của bạn**, rồi thử tạo một ảnh và một video. Không nhập tài khoản Muse vào GitHub và không gửi cookie cho người khác. Nếu Muse yêu cầu đăng nhập lại, đăng nhập trong trình duyệt và cập nhật phiên ở quản trị.
+
+Chạy lại cùng file CMD khi máy khởi động lần sau. `.env` và phiên đăng nhập cục bộ không được đẩy lên GitHub. File `setup-windows.ps1` chỉ giữ cấu hình sẵn có; muốn đặt lại khóa phải tự sao lưu và chỉnh `.env`. Chưa có phiên Muse thì giao diện sẽ mở được nhưng thao tác tạo ảnh/video sẽ báo chưa có tài khoản. Nếu bạn muốn truy cập từ điện thoại hoặc internet, cần cấu hình HTTPS và lớp xác thực cho cả canvas lẫn gateway trước khi mở ra ngoài.
+
 Repo này lưu các tệp cấu hình và bản vá bảo vệ canvas. Sau khi clone, chạy `bash setup-source.sh` để tải **đúng commit upstream đã kiểm tra** và bổ sung mã nguồn vào thư mục hiện tại; lệnh này giữ nguyên các tệp đã có trong repo. Cần kết nối GitHub trong bước cài. Không đưa cookie Muse hoặc `.env` lên GitHub.
 
 Để chạy thử trên máy riêng: cài Python 3.10+, Chromium; tạo môi trường Python `.venv` và cài `muse2api/requirements.txt`; tạo `.env` từ `.env.example`, đặt `CANVAS_HOST=127.0.0.1`, `MUSE2API_HOST=127.0.0.1`, mật khẩu canvas và khóa nội bộ ngẫu nhiên. Chạy `bash start-api.sh` và `bash start-canvas.sh` ở hai cửa sổ. Nhập phiên tài khoản Muse của chính bạn trong trang quản trị để thử tạo ảnh/video. Bản cài đầy đủ `install.sh` còn yêu cầu DeepSeek key để chạy Agent.
