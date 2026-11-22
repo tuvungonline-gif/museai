@@ -6,6 +6,8 @@
 
 1. Tải repo này bằng **Code → Download ZIP**, giải nén và bấm đúp `CAI-VA-CHAY-WINDOWS.cmd` (không cần VPS). Máy cần Python 3.10+ và Chrome hoặc Edge; Git không bắt buộc. Lần đầu bộ cài tải mã Muse-Canvas đúng commit đã ghim, cài thư viện, sinh khóa cục bộ rồi mở hai cửa sổ chương trình.
 2. Ghi lại mật khẩu canvas và địa chỉ quản trị được in trong cửa sổ đầu tiên. Mở `http://127.0.0.1:521/`, đăng nhập canvas bằng tên `admin` và mật khẩu vừa hiện. Trang chỉ dùng trên máy này; giữ hai cửa sổ chương trình đang mở.
+
+   **Lưu ý:** `127.0.0.1:521` là địa chỉ trên chính máy Windows chạy file CMD. Cổng `1521` chỉ được dùng trong một lần kiểm tra nội bộ trước đây và sẽ báo từ chối kết nối trên máy bạn. File CMD chỉ mở trình duyệt khi cả API (1314) và canvas (521) đã khởi động; nếu thất bại, chụp ảnh hai cửa sổ báo lỗi để xử lý.
 3. Trên trang quản trị `http://127.0.0.1:1314/admin?key=...`, dùng công cụ nhập phiên đăng nhập của **chính tài khoản muse.ai của bạn**, rồi thử tạo một ảnh và một video. Không nhập tài khoản Muse vào GitHub và không gửi cookie cho người khác. Nếu Muse yêu cầu đăng nhập lại, đăng nhập trong trình duyệt và cập nhật phiên ở quản trị.
 
 4. Sau khi trang quản trị báo tài khoản khả dụng, bấm đúp `TEST-TAO-ANH-VIDEO.cmd`. Bài thử gửi **một yêu cầu tạo ảnh và một yêu cầu tạo video từ chính ảnh đó** tới Muse, chờ kết quả tối đa 15 phút và lưu file vào `test-output/`. Bài thử có thể dùng hạn mức Muse của bạn; nếu video chưa có kết quả, ghi lại task ID và không gửi lại ngay để tránh tạo trùng.
