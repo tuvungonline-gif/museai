@@ -1,13 +1,25 @@
+# Secrets
 .env
 .env.*
 !.env.example
-.venv/
-**/__pycache__/
-*.pyc
 **/canvas-agent.json
 **/.infinite-canvas/
 **/.codex/
+
+# Python
+.venv/
+**/__pycache__/
+*.pyc
+
+# Node
 **/node_modules/
 **/.npm/
+**/.cache/
+**/.config/
+**/tmp/
 **/logs/
+
+# Runtime data
 muse2api/data/
+test-output/
+canvas/dist/.vite/
