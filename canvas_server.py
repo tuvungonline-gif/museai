@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent
 ROOT = Path(os.environ.get("CANVAS_ROOT") or BASE_DIR / "canvas" / "dist").resolve()
 AGENT_CONFIG = Path(os.environ.get("AGENT_CONFIG_FILE") or BASE_DIR / "agent" / ".infinite-canvas" / "canvas-agent.json")
 HOST = os.environ.get("CANVAS_HOST", "0.0.0.0")
-PORT = int(os.environ.get("CANVAS_PORT", "521"))
+PORT = int(os.environ.get("CANVAS_PORT", "1521"))
 ACCESS_USER = os.environ.get("CANVAS_ACCESS_USER", "")
 ACCESS_PASSWORD = os.environ.get("CANVAS_ACCESS_PASSWORD", "")
 
