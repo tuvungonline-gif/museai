@@ -9,12 +9,18 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     exit 0
 }
 
-$service = Get-Service -Name 'cloudflared' -ErrorAction SilentlyContinue
+$serviceName = 'cloudflared-museai-ms'
+$service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 if ($service) {
-    Write-Host 'May nay da co cloudflared service. Khong cai de tranh anh huong Tunnel dang chay.'
+    Write-Host 'Tunnel Muse da duoc cai tren may nay. Khong ghi de service.'
     Write-Host ('Trang thai hien tai: ' + $service.Status)
     Read-Host 'Nhan Enter de thoat'
-    exit 1
+    exit 0
+}
+$otherService = Get-Service -Name 'cloudflared' -ErrorAction SilentlyContinue
+if ($otherService) {
+    Write-Host 'Da phat hien cloudflared service dang dung cho ung dung khac.'
+    Write-Host 'Se tao service cloudflared-museai-ms rieng, giu nguyen service cu.'
 }
 
 Write-Host 'CAI TUNNEL museai-ms-ibeetool CHO MAY WINDOWS NAY'
@@ -53,15 +59,15 @@ if (-not (Test-Path -LiteralPath $binary)) {
 if ($LASTEXITCODE -ne 0) { throw 'Khong chay duoc cloudflared.' }
 Write-Host 'Dang cai Windows service...'
 try {
-    & $binary service install $token
-    if ($LASTEXITCODE -ne 0) { throw ('Cai service that bai, ma ' + $LASTEXITCODE) }
+    $commandLine = '"' + $binary + '" tunnel --no-autoupdate run --token ' + $token
+    New-Service -Name $serviceName -BinaryPathName $commandLine -DisplayName 'Cloudflare Tunnel - Muse ms.ibeetool.com' -StartupType Automatic | Out-Null
 } finally {
     $token = $null
 }
-$service = Get-Service -Name 'cloudflared' -ErrorAction Stop
+$service = Get-Service -Name $serviceName -ErrorAction Stop
 if ($service.Status -ne 'Running') {
-    Start-Service -Name 'cloudflared'
+    Start-Service -Name $serviceName
     $service.WaitForStatus('Running', (New-TimeSpan -Seconds 30))
 }
-Write-Host 'cloudflared service dang Running. Cho Cloudflare bao Tunnel Healthy.'
+Write-Host 'cloudflared-museai-ms dang Running. Service cloudflared cu duoc giu nguyen.'
 Read-Host 'Nhan Enter de dong'
