@@ -60,13 +60,13 @@
     --sidebar-accent-foreground: #102442; --sidebar-border: #d9dfff; --sidebar-ring: #032aea;
 }
 .dark {
-    --background: #0b1b32; --foreground: #edfaff; --border: #294862; --ring: #032aea;
+    --background: #0b1b32; --foreground: #edfaff; --border: #294862; --ring: #a9c6ff;
     --card: #102442; --card-foreground: #edfaff; --popover: #102442; --popover-foreground: #edfaff;
     --primary: #032aea; --primary-foreground: #ffffff; --secondary: #193758; --secondary-foreground: #edfaff;
     --muted: #193758; --muted-foreground: #aecbd9; --accent: #193758; --accent-foreground: #edfaff;
     --destructive: #eb7080; --input: #294862; --chart-1: #032aea; --chart-2: #fda003;
     --chart-3: #a6e8ff; --chart-4: #3d81af; --chart-5: #dcefff; --sidebar: #102442;
-    --sidebar-foreground: #edfaff; --sidebar-primary: #032aea; --sidebar-primary-foreground: #102442;
+    --sidebar-foreground: #edfaff; --sidebar-primary: #a9c6ff; --sidebar-primary-foreground: #102442;
     --sidebar-accent: #193758; --sidebar-accent-foreground: #edfaff; --sidebar-border: #294862; --sidebar-ring: #032aea;
 }
 .ibee-loading { min-height: 100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:#f7f8ff; color:#102442; font:16px system-ui; }
@@ -564,3 +564,7 @@
     border-radius: 0.6rem;
     font-size: 0.75rem;
 }
+
+:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+input::placeholder, textarea::placeholder { color: #53667c; opacity: 1; }
+.dark input::placeholder, .dark textarea::placeholder { color: #b5c9dc; opacity: 1; }
