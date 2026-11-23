@@ -23,3 +23,10 @@
 muse2api/data/
 test-output/
 canvas/dist/.vite/
+
+# Private membership data and installer configuration
+data/
+*.sqlite3
+*.sqlite3-*
+member-update-backup-*/
+admin-phone.local.txt

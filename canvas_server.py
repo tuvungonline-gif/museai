@@ -33,6 +33,8 @@ PORT = int(os.environ.get("CANVAS_PORT", "1521"))
 ACCESS_USER = os.environ.get("CANVAS_ACCESS_USER", "")
 ACCESS_PASSWORD = os.environ.get("CANVAS_ACCESS_PASSWORD", "")
 PUBLIC_CANVAS = os.environ.get("CANVAS_PUBLIC", "").lower() in ("1", "true", "yes")
+MEMBERS_ENABLED = os.environ.get("CANVAS_MEMBERS_ENABLED", "0") == "1"
+MEMBER_STORE = None
 API_KEY = os.environ.get("MUSE_API_KEY", "").strip()
 API_PORT = int(os.environ.get("MUSE2API_PORT", "1314"))
 PUBLIC_PREFIX = "/employee-api/v1/"
@@ -139,14 +141,14 @@ def _runtime_config() -> str:
         value = os.environ.get(key, "").strip()
         if value:
             payload[key] = value
-    if not PUBLIC_CANVAS:
+    if not PUBLIC_CANVAS and not MEMBERS_ENABLED:
         payload.update(_agent_runtime())
-    base = ("/employee-api" if PUBLIC_CANVAS else os.environ.get("MUSE_API_BASE", "").strip().rstrip("/"))
+    base = ("/employee-api" if PUBLIC_CANVAS or MEMBERS_ENABLED else os.environ.get("MUSE_API_BASE", "").strip().rstrip("/"))
     if base:
         payload["MUSE_API_BASE"] = base
     # Public visitors receive a non-secret placeholder. The server adds the real key
     # only for the allowlisted generation endpoints below.
-    key = "public-canvas" if PUBLIC_CANVAS else API_KEY
+    key = "public-canvas" if PUBLIC_CANVAS or MEMBERS_ENABLED else API_KEY
     if key:
         payload["MUSE_API_KEY"] = key
     script = (
@@ -154,7 +156,7 @@ def _runtime_config() -> str:
         + json.dumps(payload, ensure_ascii=False)
         + ");\n"
     )
-    if PUBLIC_CANVAS:
+    if PUBLIC_CANVAS or MEMBERS_ENABLED:
         script += 'window.__RUNTIME_CONFIG__.MUSE_API_BASE = window.location.origin + "/employee-api";\n'
     return script
 
@@ -187,7 +189,45 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def _serve(self, head_only: bool) -> None:
-        if ACCESS_PASSWORD and not PUBLIC_CANVAS:
+        path = unquote(urlsplit(self.path).path)
+        if MEMBERS_ENABLED:
+            if MEMBER_STORE is None:
+                self._send(503, b"Member service unavailable", "text/plain", "no-store", head_only)
+                return
+            if MEMBER_STORE.route(self, path):
+                return
+            if path in ("/login", "/register") and self.command in ("GET", "HEAD"):
+                from member_pages import PAGE
+                self._send(200, PAGE.encode(), "text/html; charset=utf-8", "no-store", head_only)
+                return
+            user = MEMBER_STORE.user(self)
+            if not user:
+                if path.startswith("/employee-api/") or self.command == "POST":
+                    MEMBER_STORE.reply(self, 401, {"error": "Vui lòng đăng nhập."})
+                else:
+                    self.send_response(303)
+                    self.send_header("Location", "/login")
+                    self.send_header("Content-Length", "0")
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                return
+            if self.command == "POST":
+                origin = self.headers.get("Origin")
+                if origin and urlsplit(origin).netloc != self.headers.get("Host"):
+                    MEMBER_STORE.reply(self, 403, {"error": "Yêu cầu không hợp lệ."})
+                    return
+            if path in ("/prompts", "/members") and self.command in ("GET", "HEAD"):
+                if path == "/members" and user["role"] != "admin":
+                    self._send(403, b"Admin only", "text/plain", "no-store", head_only)
+                    return
+                from member_pages import PAGE
+                self._send(200, PAGE.encode(), "text/html; charset=utf-8", "no-store", head_only)
+                return
+            if path == "/member-widget.js":
+                from member_pages import WIDGET
+                self._send(200, WIDGET.encode(), "application/javascript; charset=utf-8", "no-store", head_only)
+                return
+        if ACCESS_PASSWORD and not PUBLIC_CANVAS and not MEMBERS_ENABLED:
             supplied = self.headers.get("Authorization", "")
             expected = "Basic " + base64.b64encode(
                 f"{ACCESS_USER or 'admin'}:{ACCESS_PASSWORD}".encode("utf-8")
@@ -199,7 +239,6 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", "0")
                 self.end_headers()
                 return
-        path = unquote(urlsplit(self.path).path)
         try:
             if path.startswith("/employee-api/"):
                 self._public_api(path, head_only)
@@ -230,6 +269,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
             body = candidate.read_bytes()
+            if MEMBERS_ENABLED and candidate == ROOT / "index.html":
+                body = body.replace(b"</body>", b'<script src="/member-widget.js"></script></body>')
             content_type = mimetypes.guess_type(str(candidate))[0] or "application/octet-stream"
             if content_type.startswith("text/") or content_type in (
                 "application/javascript", "application/json", "application/manifest+json",
@@ -245,7 +286,7 @@ class Handler(BaseHTTPRequestHandler):
                        "text/plain; charset=utf-8", "no-store", head_only)
 
     def _public_api(self, path: str, head_only: bool) -> None:
-        if not PUBLIC_CANVAS or not API_KEY or self.command not in ("GET", "POST") or head_only:
+        if not (PUBLIC_CANVAS or MEMBERS_ENABLED) or not API_KEY or self.command not in ("GET", "POST") or head_only:
             self._send(404, b"not found\n", "text/plain", "no-store", head_only)
             return
         if not path.startswith(PUBLIC_PREFIX):
@@ -303,6 +344,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    global MEMBER_STORE
+    if MEMBERS_ENABLED:
+        from member_auth import MemberStore
+        MEMBER_STORE = MemberStore(BASE_DIR / "data" / "members.sqlite3",
+                                   os.environ.get("CANVAS_ADMIN_PHONE", ""), ACCESS_PASSWORD)
     if PUBLIC_CANVAS and (HOST not in ("127.0.0.1", "::1", "localhost") or not API_KEY):
         raise SystemExit("Public canvas requires CANVAS_HOST=127.0.0.1 and MUSE_API_KEY")
     if HOST not in ("127.0.0.1", "::1", "localhost") and not ACCESS_PASSWORD:

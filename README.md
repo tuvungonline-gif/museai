@@ -2,6 +2,42 @@
 
 ## Bản cài của tuvungonline-gif
 
+### Đăng ký, duyệt thành viên và thư viện riêng
+
+Tải ZIP mới, giải nén và chạy `CAP-NHAT-THANH-VIEN.cmd`. Bộ cài tự tìm thư mục
+Muse đang chạy, yêu cầu số điện thoại admin (hoặc nhận tham số `-AdminPhone`),
+sao lưu cấu hình và chỉ khởi động lại Canvas. Chạy lúc không có ai đang tạo
+ảnh/video. Mật khẩu admin ban đầu là `CANVAS_ACCESS_PASSWORD` hiện có trong
+`.env`; không gửi mật khẩu lên GitHub. Số admin không được ghi cố định trong mã.
+
+- `/register`: số điện thoại Việt Nam, mật khẩu 8–128 ký tự, nhập lại mật khẩu.
+- Đăng ký mới luôn ở trạng thái **Chờ duyệt**, chưa được đăng nhập hay gọi chức năng tạo.
+- `/login`: đăng nhập bằng số điện thoại và mật khẩu sau khi được duyệt.
+- `/members`: chỉ admin xem và duyệt, từ chối/khóa, mở khóa thành viên; khóa thu hồi phiên hiện tại.
+- `/prompts`: admin quản lý toàn bộ lời nhắc, tạo thư viện chung cho mọi thành viên;
+  thành viên tạo/sửa/xóa lời nhắc riêng, xem và sao chép thư viện chung. Admin có quyền xem và quản lý lời nhắc riêng.
+- Nút tài khoản ở góc dưới Canvas dẫn tới thư viện, quản trị và đăng xuất.
+
+Khi bật chế độ thành viên, web và đường gọi tạo ảnh/video qua Canvas yêu cầu
+đăng nhập. Mật khẩu được băm PBKDF2 có salt, phiên đăng nhập lưu bằng token băm,
+cookie HttpOnly/SameSite và Secure khi truy cập HTTPS. Có hạn chế thử đăng nhập,
+kiểm tra CSRF cho thao tác quản lý và kiểm tra quyền ở máy chủ.
+Số điện thoại dùng làm tên đăng nhập; bản này chưa xác minh qua SMS hoặc hỗ trợ
+quên mật khẩu tự động. Canvas/dữ liệu tạo ảnh/video trong trình duyệt vẫn giữ
+cách lưu hiện tại; bổ sung này tách tài khoản và thư viện lời nhắc.
+
+Dữ liệu thành viên và lời nhắc mới ở `data/members.sqlite3` trong thư mục Muse.
+Sao lưu tệp này bằng SQLite backup khi dịch vụ đang chạy, hoặc sao chép khi đã
+dừng Canvas. Không xóa/chuyển cơ sở dữ liệu nếu muốn giữ tài khoản. Nâng cấp
+không ghi đè mật khẩu admin đã có trong cơ sở dữ liệu.
+
+Thiết lập: `CANVAS_MEMBERS_ENABLED=1`, `CANVAS_ADMIN_PHONE=<số điện thoại>`.
+Chỉ admin được cấu hình trên máy chủ; người đăng ký đầu tiên không trở thành
+admin. Thư viện mới bắt đầu trống; bộ cài bỏ nguồn lời nhắc cũ và dọn cache cũ
+một lần trong từng trình duyệt khi họ mở lại web. Bản sao Canvas, tài sản và
+ảnh/video không bị bộ dọn thư viện xóa.
+
+
 ### Xóa toàn bộ thư viện lời nhắc cũ
 
 Tải ZIP mới, giải nén, chạy `XOA-THU-VIEN-LOI-NHAC.cmd`. Bộ cập nhật tự tìm thư mục Muse đang giữ cổng 1521 và thay riêng giao diện thư viện, không cần khởi động lại dịch vụ. Mỗi người mở lại web bằng Ctrl+F5 để dọn các nguồn lời nhắc và bộ nhớ đệm `prompt_cache` cũ trong trình duyệt của họ. Bản này không tạo tài khoản thành viên hay thư viện chung của admin.
