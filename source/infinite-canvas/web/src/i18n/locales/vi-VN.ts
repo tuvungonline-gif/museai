@@ -3,7 +3,7 @@ import enUS from "./en-US";
 // Các mục kỹ thuật chưa dịch dùng tiếng Anh; không bao giờ quay về tiếng Trung.
 export default {
     ...enUS,
-    meta: { title: "Canvas Muse", description: "Không gian sáng tạo ảnh và video" },
+    meta: { title: "IBEE", description: "Smart tools. Simple work." },
     theme: { toggle: "Đổi giao diện" },
     common: {
         ...enUS.common,

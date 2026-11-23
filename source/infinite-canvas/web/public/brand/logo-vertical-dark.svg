@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 340" role="img" aria-label="IBEE"><g transform="translate(12 0)">
+  <path d="M87 86C69 48 46 48 41 52c-10 18 19 18 36 22m20 12C102 45 85 32 78 38c-7 9 5 19 19 27" fill="none" stroke="#102442" stroke-width="8" stroke-linecap="round"/>
+  <path d="M155 118c-9-47 2-79 25-84 19-3 31 16 20 37l-31 51z" fill="#fff" stroke="#102442" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M171 121c17-47 48-68 65-53 16 17-1 48-50 66z" fill="#DDF5FF" stroke="#102442" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M117 139c22-19 62-20 84 0 26 25 22 68-8 84-27 13-60 1-81-31z" fill="#FFC928" stroke="#102442" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M137 132c12-4 23-5 33-3l-41 82c-10-7-17-17-21-28zM197 138c6 4 10 10 14 16l-27 68c-9 4-19 5-29 4z" fill="#fff"/>
+  <path d="M113 181c16-32 41-46 72-48m-45 84c17-13 32-34 45-65" fill="none" stroke="#102442" stroke-width="8"/>
+  <path d="m205 207 22 25-35-7" fill="#fff" stroke="#102442" stroke-width="7" stroke-linejoin="round"/>
+  <ellipse cx="95" cy="131" rx="58" ry="51" transform="rotate(-14 95 131)" fill="#fff" stroke="#102442" stroke-width="8"/>
+  <ellipse cx="73" cy="123" rx="10" ry="15" fill="#102442"/><ellipse cx="115" cy="111" rx="10" ry="15" fill="#102442"/>
+  <circle cx="70" cy="118" r="3.5" fill="#fff"/><circle cx="112" cy="106" r="3.5" fill="#fff"/>
+  <path d="M88 149q13 24 33 3 3-13-5-10l-24 4q-6 0-4 3" fill="#102442"/><path d="M105 160q6-9 13-7-6 12-13 7" fill="#FF6479"/>
+</g><text x="140" y="284" text-anchor="middle" font-family="Arial, sans-serif" font-size="65" font-weight="900" letter-spacing="7" fill="#FFFFFF">IBEE</text></svg>

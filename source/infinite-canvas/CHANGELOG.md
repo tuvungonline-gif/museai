@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- [调整] Áp dụng nhận diện IBEE, bảng màu Light Tech Blue, logo SVG và icon PWA cho giao diện Canvas và trang thành viên.
+
 - [调整] Thay nút phiên bản/GitHub bằng Quản lý tài khoản; ẩn Cài đặt với thành viên và bổ sung hồ sơ trên hệ thống tài khoản hiện có.
 
 + [新增] 支持通过运行时配置注入自建 Muse 渠道（muse-image / muse-video / muse-spark），并修正首次访问时默认渠道被清空的问题。

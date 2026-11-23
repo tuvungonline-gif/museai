@@ -78,6 +78,15 @@ class MembersTest(unittest.TestCase):
         self.assertEqual(self.login('0911111111')[0], 403)
         self.assertNotIn(b'member-password', (self.root / 'members.sqlite3').read_bytes())
 
+    def test_brand_assets_available_on_login_without_opening_private_routes(self):
+        (self.root / 'brand').mkdir()
+        (self.root / 'brand' / 'favicon.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+        (self.root / 'manifest.webmanifest').write_text('{"name":"IBEE"}')
+        self.assertEqual(self.request('/brand/favicon.svg')[0], 200)
+        self.assertEqual(self.request('/manifest.webmanifest')[0], 200)
+        self.assertEqual(self.request('/brand/missing.svg')[0], 303)
+        self.assertEqual(self.request('/')[0], 303)
+
     def test_prompt_scope_permissions_and_csrf(self):
         for p in ('0911111111', '0922222222'):
             self.register(p); self.approve(p); self.login(p)

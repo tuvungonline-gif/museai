@@ -1,23 +1,28 @@
 <!doctype html>
-<html lang="vi-VN" class="font-sans">
+<html lang="vi" class="font-sans" data-muse-account-ui="1">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="description" content="Không gian sáng tạo ảnh và video" />
-        <link rel="icon" href="/logo.svg" />
-        <title>Canvas Muse</title>
+        <meta name="description" content="IBEE — Smart tools. Simple work. Công cụ sáng tạo ảnh và video." />
+        <meta name="theme-color" content="#16B9F4" />
+        <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/brand/icon-64.png" type="image/png" sizes="64x64" />
+        <link rel="apple-touch-icon" href="/brand/icon-180.png" sizes="180x180" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <title>IBEE · Smart tools. Simple work.</title>
         <script>
             try {
                 var s = JSON.parse(localStorage.getItem("infinite-canvas:theme_store") || "{}");
-                var t = s.state && s.state.theme === "light" ? "light" : "dark";
+                var t = s.state && s.state.theme === "dark" ? "dark" : "light";
                 document.documentElement.classList.toggle("dark", t === "dark");
                 document.documentElement.style.colorScheme = t;
             } catch (e) {}
         </script>
     </head>
     <body class="bg-background text-foreground antialiased">
-        <div id="root"></div>
+        <div id="root"><div class="ibee-loading"><img src="/brand/bee-symbol.svg" alt="" width="64" height="64" /><strong>IBEE</strong><span>Smart tools. Simple work.</span></div></div>
         <script src="/config.js"></script>
+        <script src="/prompt-library-reset-v1.js"></script>
         <script type="module" src="/src/main.tsx"></script>
     </body>
 </html>

@@ -35,18 +35,12 @@ export function AppTopNav() {
     return (
         <>
             {!hideHeader ? (
-                <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-stone-200 bg-background/90 backdrop-blur-xl dark:border-stone-800">
+                <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-sky-100 bg-background/90 backdrop-blur-xl dark:border-sky-900">
                     <div className="mx-auto flex h-full max-w-7xl items-stretch justify-between gap-2 px-3 sm:px-6 md:gap-5">
                         <div className="flex min-w-0 items-center">
-                            <Link to="/" className="flex h-full shrink-0 items-center gap-2 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:text-stone-600 dark:text-stone-100 dark:hover:text-stone-300">
-                                <span
-                                    className="size-5 shrink-0 bg-current"
-                                    style={{
-                                        mask: "url(/logo.svg) center / contain no-repeat",
-                                        WebkitMask: "url(/logo.svg) center / contain no-repeat",
-                                    }}
-                                />
-                                <span className="text-base font-medium">{t("meta.title")}</span>
+                            <Link to="/" className="flex h-full shrink-0 items-center gap-1.5 text-sm font-semibold leading-none tracking-tight text-[#102442] transition hover:text-[#16B9F4] dark:text-white">
+                                <img src="/brand/bee-symbol.svg" alt="" width="30" height="30" className="size-7 shrink-0" />
+                                <span className="hidden text-base font-bold tracking-[.08em] min-[390px]:inline">IBEE</span>
                             </Link>
 
                             <button

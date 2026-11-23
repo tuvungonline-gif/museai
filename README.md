@@ -1,101 +1,11 @@
 # Muse—Canvas
 
+## Giao diện IBEE
+
+Bản cập nhật IBEE dùng logo ong SVG lấy cảm hứng từ hình nhận diện được cung cấp, giao diện Light Tech Blue và icon PWA đồng bộ. Từ ZIP mới nhất của repo, giải nén, bấm đúp `CAP-NHAT-IBEE.cmd`. Bộ cài tự tìm thư mục Canvas đang nghe cổng 1521, sao lưu tệp trước khi thay, giữ dữ liệu thành viên, `.env`, phiên Muse và các website khác. Sau khi cài, mở `https://ms.ibeetool.com/`, tải lại bằng Ctrl+F5. Nếu cổng 1521 đang tắt, chỉ thư mục Muse đang có `.env` và chạy file trong ZIP mới. Phần icon màn hình chính cần kiểm tra riêng trên thiết bị thực; manifest không tự thêm tính năng offline.
+
+
 ## Bản cài của tuvungonline-gif
-
-### Cập nhật giao diện Quản lý tài khoản
-
-Chạy `CAP-NHAT-QUAN-LY-TAI-KHOAN.cmd` từ ZIP mới, khi mọi người đã ngừng tạo
-nội dung. Bộ cài dùng số admin đã lưu trong `.env`, sao lưu SQLite và cấu hình,
-cài giao diện đã build sẵn rồi chỉ khởi động lại Canvas. Không cần cài Node
-trên Windows. Gói `account-ui.zip` và `install_account_assets.py` phải đi cùng
-bộ cài; HTML chỉ chuyển sang giao diện mới sau khi các tài nguyên đã sẵn sàng.
-
-- Cụm thao tác trên Canvas thay phiên bản/GitHub bằng **Quản lý tài khoản** → `/account`.
-- Thành viên không thấy menu/nút Cài đặt ở thanh điều hướng desktop, mobile
-  và cụm biểu tượng; admin giữ phần cài đặt hiện tại. Đây là thay đổi hiển thị,
-  không thay cơ chế xác thực hoặc quyền của API cài đặt.
-- Thành viên xem số điện thoại, vai trò, trạng thái, ngày tham gia; sửa tên,
-  email, đơn vị của chính mình. Không thể tự đổi số đăng nhập, vai trò hay gói.
-- Admin tìm/lọc tài khoản, sửa thông tin và ghi chú nội bộ, duyệt/khóa bằng
-  API thành viên hiện có. Ghi chú nội bộ không được trả cho thành viên.
-- Tận dụng bảng `users` và phiên hiện tại. Hồ sơ bổ sung ở `account_profiles`;
-  `payment_history` để trống cho mở rộng sau. Chưa có cổng thanh toán, thao tác
-  thu phí, đăng ký gói hay API tự thay đổi gói.
-
-Kiểm tra: 10 bài HTTP/phân quyền/hồi quy đạt; kiểm tra render component cho
-admin và member đạt; build Vite đạt; bộ cài tài nguyên đã kiểm tra tính đầy đủ,
-chuyển index sau cùng, sao lưu và giữ dữ liệu tài khoản. Trình duyệt thử nghiệm
-không kết nối được dịch vụ HTTP cục bộ trong môi trường này, nên kiểm tra
-trực quan desktop/mobile và bản chạy trên Windows/tên miền còn chờ. Typecheck
-toàn bộ nguồn còn lỗi có sẵn `styles.content` của Ant Design tại
-`model-script-editor.tsx` (không thuộc các tệp thay đổi).
-
-
-### Đăng ký, duyệt thành viên và thư viện riêng
-
-Tải ZIP mới, giải nén và chạy `CAP-NHAT-THANH-VIEN.cmd`. Bộ cài tự tìm thư mục
-Muse đang chạy, yêu cầu số điện thoại admin (hoặc nhận tham số `-AdminPhone`),
-sao lưu cấu hình và chỉ khởi động lại Canvas. Chạy lúc không có ai đang tạo
-ảnh/video. Mật khẩu admin ban đầu là `CANVAS_ACCESS_PASSWORD` hiện có trong
-`.env`; không gửi mật khẩu lên GitHub. Số admin không được ghi cố định trong mã.
-
-- `/register`: số điện thoại Việt Nam, mật khẩu 8–128 ký tự, nhập lại mật khẩu.
-- Đăng ký mới luôn ở trạng thái **Chờ duyệt**, chưa được đăng nhập hay gọi chức năng tạo.
-- `/login`: đăng nhập bằng số điện thoại và mật khẩu sau khi được duyệt.
-- `/members`: chỉ admin xem và duyệt, từ chối/khóa, mở khóa thành viên; khóa thu hồi phiên hiện tại.
-- `/prompts`: admin quản lý toàn bộ lời nhắc, tạo thư viện chung cho mọi thành viên;
-  thành viên tạo/sửa/xóa lời nhắc riêng, xem và sao chép thư viện chung. Admin có quyền xem và quản lý lời nhắc riêng.
-- Nút tài khoản ở góc dưới Canvas dẫn tới thư viện, quản trị và đăng xuất.
-
-Khi bật chế độ thành viên, web và đường gọi tạo ảnh/video qua Canvas yêu cầu
-đăng nhập. Mật khẩu được băm PBKDF2 có salt, phiên đăng nhập lưu bằng token băm,
-cookie HttpOnly/SameSite và Secure khi truy cập HTTPS. Có hạn chế thử đăng nhập,
-kiểm tra CSRF cho thao tác quản lý và kiểm tra quyền ở máy chủ.
-Số điện thoại dùng làm tên đăng nhập; bản này chưa xác minh qua SMS hoặc hỗ trợ
-quên mật khẩu tự động. Canvas/dữ liệu tạo ảnh/video trong trình duyệt vẫn giữ
-cách lưu hiện tại; bổ sung này tách tài khoản và thư viện lời nhắc.
-
-Dữ liệu thành viên và lời nhắc mới ở `data/members.sqlite3` trong thư mục Muse.
-Sao lưu tệp này bằng SQLite backup khi dịch vụ đang chạy, hoặc sao chép khi đã
-dừng Canvas. Không xóa/chuyển cơ sở dữ liệu nếu muốn giữ tài khoản. Nâng cấp
-không ghi đè mật khẩu admin đã có trong cơ sở dữ liệu.
-
-Thiết lập: `CANVAS_MEMBERS_ENABLED=1`, `CANVAS_ADMIN_PHONE=<số điện thoại>`.
-Chỉ admin được cấu hình trên máy chủ; người đăng ký đầu tiên không trở thành
-admin. Thư viện mới bắt đầu trống; bộ cài bỏ nguồn lời nhắc cũ và dọn cache cũ
-một lần trong từng trình duyệt khi họ mở lại web. Bản sao Canvas, tài sản và
-ảnh/video không bị bộ dọn thư viện xóa.
-
-
-### Xóa toàn bộ thư viện lời nhắc cũ
-
-Tải ZIP mới, giải nén, chạy `XOA-THU-VIEN-LOI-NHAC.cmd`. Bộ cập nhật tự tìm thư mục Muse đang giữ cổng 1521 và thay riêng giao diện thư viện, không cần khởi động lại dịch vụ. Mỗi người mở lại web bằng Ctrl+F5 để dọn các nguồn lời nhắc và bộ nhớ đệm `prompt_cache` cũ trong trình duyệt của họ. Bản này không tạo tài khoản thành viên hay thư viện chung của admin.
-
-Tệp giao diện mới dùng tên khác để tránh bộ nhớ đệm cũ; chỉ thư viện lời nhắc bị dọn, không xóa canvas, tài sản, ảnh/video, tài khoản Muse hay cấu hình. Việc dọn dữ liệu trình duyệt diễn ra một lần, không lặp lại với lời nhắc mới. Nếu cài lại một bản giao diện cũ sau này, chạy lại bộ cập nhật để bỏ nguồn mặc định lần nữa.
-
-
-### Nơi lưu và tự xóa ảnh/video
-
-Ảnh/video thành phẩm nằm ở `muse2api\data\media` trong thư mục Muse đang chạy
-(`MUSE2API_HOME\data\media` nếu có đặt thư mục riêng). Dữ liệu tài khoản và
-nhiệm vụ ở `muse2api\data`; hồ sơ trình duyệt ở `%USERPROFILE%\muse2api-profiles`.
-
-Để bật tự xóa: tải ZIP mới, giải nén, chạy **`TU-DONG-XOA-ANH-VIDEO.cmd`**
-lúc không có yêu cầu tạo đang chạy. Bộ cài tự tìm Muse đang chạy và yêu cầu
-nhập số **ngày** lưu, ví dụ `1`, `3`, `7`; nhập `0` để tắt. Không tự chọn
-thời hạn nếu bạn chưa nhập. Bộ cài sao lưu cấu hình rồi chỉ khởi động lại
-Canvas; không cần nhập lại tài khoản Muse.
-
-Canvas kiểm tra lúc khởi động và mỗi giờ: xóa vĩnh viễn tệp ảnh/video có lần
-sửa cuối cũ hơn thời hạn. Không đi vào thư mục con, không theo liên kết, không
-xóa tài khoản, cấu hình hoặc tệp tải dở. Khi Canvas tắt thì không dọn; khi mở
-lại sẽ kiểm tra tiếp. Windows có thể giữ khóa tệp đang tải: tệp đó được thử lại
-ở lần sau. Tệp bị xóa sẽ mất liên kết tải trên máy chủ; dữ liệu nhiệm vụ có thể
-vẫn còn. Bản đã tải về hoặc lưu trong trình duyệt nhân viên không bị xóa.
-
-Thiết lập trong `.env`: `CANVAS_MEDIA_RETENTION_HOURS=168` giữ 7 ngày;
-`72` giữ 3 ngày, `24` giữ 1 ngày, `0` tắt. Khởi động lại Canvas sau khi sửa
-bằng tay. Bản cài mặc định chưa bật xóa tự động.
 
 ### Mở web cho nhân viên không cần đăng nhập
 
@@ -121,7 +31,6 @@ quota tài khoản Muse; chưa có tài khoản nhân viên, giới hạn theo n
 sử dùng chung. Canvas của mỗi nhân viên lưu trong trình duyệt của họ. Tính năng
 Agent sử dụng token quản trị được tắt trong chế độ công khai.
 
-
 ### Giao diện tiếng Việt
 
 Canvas mặc định dùng **tiếng Việt**; nút **VI** trên thanh trên cùng lần lượt chuyển sang tiếng Anh, tiếng Trung rồi trở về tiếng Việt. Trình duyệt đã lưu lựa chọn tiếng Trung trước đây sẽ tự chuyển sang tiếng Việt trong lần cập nhật đầu tiên. Các mục kỹ thuật chưa dịch sẽ hiện tiếng Anh, không thay đổi khóa API, phiên Muse hay dữ liệu đã tạo.
@@ -130,9 +39,14 @@ Canvas mặc định dùng **tiếng Việt**; nút **VI** trên thanh trên cù
 
 ### Tên miền ms.ibeetool.com
 
-Cloudflare đã **Active**. `ms.ibeetool.com` hiện dùng Tunnel Windows `chatwoot` đang hoạt động (ID `9743e2a9-e46f-4ef9-ba53-2e8d6ddedfc9`); ba hostname cũ của Tunnel được giữ nguyên. `/v1/*` đi tới Muse API tại `127.0.0.1:1314`, các đường còn lại tới Canvas tại `127.0.0.1:1521`. DNS `ms` đã trỏ tới Tunnel hoạt động. Truy cập ngoài internet hiện trả yêu cầu đăng nhập Canvas (HTTP 401 Basic); `/v1/models` trả JSON 401 do thiếu khóa API, xác nhận cả hai dịch vụ đã tới được. **Không cần chạy `CAI-TUNNEL-WINDOWS.cmd` nữa.**
 
-Để Canvas trên máy khác/điện thoại gọi Muse API qua tên miền, trên **thư mục Muse cũ đang chạy, nơi có `.env`**, chép hai file `BAT-TEN-MIEN-WINDOWS.cmd` và `setup-domain-windows.ps1` từ ZIP mới vào đó. Đóng hai cửa sổ `Muse API` và `Muse Canvas`, bấm đúp `BAT-TEN-MIEN-WINDOWS.cmd`, rồi bấm `CAI-VA-CHAY-WINDOWS.cmd`. Bước này sao lưu `.env`, chuyển API và media sang `https://ms.ibeetool.com`, giữ nguyên khóa và tài khoản Muse. Máy Windows phải bật và hai dịch vụ Muse phải chạy thì tên miền mới phục vụ được.
+Cloudflare đã tạo zone `ibeetool.com` (iNET đã lưu nameserver; chờ Cloudflare xác nhận kích hoạt), Tunnel `museai-ms-ibeetool` và bản ghi `ms` tới Tunnel. Tunnel chuyển `/v1/*` đến Muse API tại `127.0.0.1:1314`, các đường còn lại đến Canvas tại `127.0.0.1:1521`. Trang quản trị API chỉ mở cục bộ trên máy Windows; tài khoản Muse và `.env` không tải lên Cloudflare.
+
+1. **Trên chính máy Windows chạy Muse**, tải bản mới của repo bằng **Code → Download ZIP**. Chép `CAI-TUNNEL-WINDOWS.cmd` và `CAI-TUNNEL-WINDOWS.ps1` vào thư mục Muse đang chạy. Bấm đúp file CMD, chấp nhận cửa sổ xin quyền Administrator. Vào [Cloudflare Tunnels](https://dash.cloudflare.com/?to=/:account/tunnels), chọn `museai-ms-ibeetool` → **Add a replica** → **Windows**, chỉ sao chép phần **token** rồi dán vào cửa sổ cài đặt. Bộ cài tải `cloudflared` từ Cloudflare GitHub và tạo Windows service; nếu máy đã có service tên `cloudflared` thì dừng để tránh thay Tunnel khác. Giữ kín token, không nhập vào GitHub hoặc gửi qua chat. Giữ Windows và hai dịch vụ Muse chạy khi dùng tên miền.
+2. iNET đã lưu nameserver `julissa.ns.cloudflare.com` và `trey.ns.cloudflare.com`. Đã đối chiếu 10 bản ghi DNS cũ tại iNET và sao chép đầy đủ sang Cloudflare; bản ghi `ms` là bản ghi thứ 11. Đợi zone chuyển từ **Pending** sang **Active**. Đối chiếu thêm nếu DNS iNET có thay đổi trong thời gian chuyển tiếp.
+3. **Sau khi zone báo Active**, tải bản mới của repo bằng **Code → Download ZIP**. Chép hai file `BAT-TEN-MIEN-WINDOWS.cmd` và `setup-domain-windows.ps1` vào **thư mục Muse đang chạy, nơi có `.env` và `test-output/`**. Đóng hai cửa sổ `Muse API` và `Muse Canvas`, bấm đúp `BAT-TEN-MIEN-WINDOWS.cmd`, sau đó bấm `CAI-VA-CHAY-WINDOWS.cmd` để khởi động lại. File này sao lưu `.env`, chuyển địa chỉ API và media sang `https://ms.ibeetool.com`, giữ nguyên khóa và tài khoản đã nhập. Mở `https://ms.ibeetool.com` để thử tạo ảnh và video.
+
+Nếu bạn muốn giữ DNS của `ibeetool.com` ở một tài khoản Cloudflare khác, cần chuyển cấu hình Tunnel và bản ghi `ms` sang đúng tài khoản đó thay vì đổi nameserver sang zone mới. Không xóa hai cửa sổ Muse; Windows tắt hoặc ngủ thì ứng dụng sẽ ngừng phục vụ.
 
 
 ### Chạy trên máy Windows của bạn
@@ -151,13 +65,13 @@ Repo này lưu các tệp cấu hình và bản vá bảo vệ canvas. Sau khi c
 
 Để chạy thử trên máy riêng: cài Python 3.10+, Chromium; tạo môi trường Python `.venv` và cài `muse2api/requirements.txt`; tạo `.env` từ `.env.example`, đặt `CANVAS_HOST=127.0.0.1`, `MUSE2API_HOST=127.0.0.1`, mật khẩu canvas và khóa nội bộ ngẫu nhiên. Chạy `bash start-api.sh` và `bash start-canvas.sh` ở hai cửa sổ. Nhập phiên tài khoản Muse của chính bạn trong trang quản trị để thử tạo ảnh/video. Bản cài đầy đủ `install.sh` còn yêu cầu DeepSeek key để chạy Agent.
 
-Khi gắn tên miền ở chế độ riêng tư, dùng HTTPS và đặt mật khẩu `CANVAS_ACCESS_PASSWORD`. Để mở cho nhân viên không cần đăng nhập, dùng chế độ `CANVAS_PUBLIC=1` nêu phía trên; Canvas chỉ lắng nghe `127.0.0.1` và không gửi khóa thật vào trình duyệt. Bảo vệ riêng địa chỉ API và trang quản trị bằng reverse proxy, không công khai cổng Chromium/CDP.
+Khi gắn tên miền, dùng HTTPS và đặt mật khẩu `CANVAS_ACCESS_PASSWORD`; trang canvas sẽ từ chối khởi động trên giao diện mạng nếu chưa đặt mật khẩu. Bảo vệ riêng địa chỉ API và trang quản trị bằng reverse proxy, không công khai cổng Chromium/CDP.
 
 > 把 **Muse(muse.ai)** 的生图 / 生视频 / 对话能力接进 **无限画布**，再用 **DeepSeek + Codex Agent** 让 AI 直接操作画布。
 >
 > A self-hosted AI canvas that connects **Muse(muse.ai)** image / video / chat models to **Infinite Canvas**, with a server-side **DeepSeek + Codex Agent** that can operate the canvas.
 
-> **This fork:** Set `CANVAS_ACCESS_PASSWORD` in `.env` before exposing the canvas on a network interface. The private canvas returns its gateway key and Agent token to authenticated browsers through `/config.js`. Public employee mode keeps those secrets on the server and requires loopback binding. For a local smoke test without DeepSeek, set `CANVAS_HOST=127.0.0.1`, leave `DEEPSEEK_API_KEY` empty, install `muse2api/requirements.txt` in `.venv`, and run `start-api.sh` plus `start-canvas.sh`. The full `install.sh` requires a DeepSeek key for its optional Agent. Protect the Muse gateway/admin separately at the reverse proxy; the canvas password does not guard the gateway.
+> **This fork:** Set `CANVAS_ACCESS_PASSWORD` in `.env` before exposing the canvas on a network interface. The canvas returns its gateway key and Agent token to authenticated browsers through `/config.js`, so use HTTPS and keep the canvas private. For a local smoke test without DeepSeek, set `CANVAS_HOST=127.0.0.1`, leave `DEEPSEEK_API_KEY` empty, install `muse2api/requirements.txt` in `.venv`, and run `start-api.sh` plus `start-canvas.sh`. The full `install.sh` requires a DeepSeek key for its optional Agent. Protect the Muse gateway/admin separately at the reverse proxy; the canvas password does not guard the gateway.
 
 [中文](#中文) · [English](#english) · [GitHub](https://github.com/huwanbin/Muse-Canvas)
 

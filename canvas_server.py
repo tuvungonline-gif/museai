@@ -204,7 +204,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, PAGE.encode(), "text/html; charset=utf-8", "no-store", head_only)
                 return
             user = MEMBER_STORE.user(self)
-            if not user:
+            public_brand = ((path == "/manifest.webmanifest" or
+                             (path.startswith("/brand/") and "/" not in path[7:])) and
+                            (ROOT / path.lstrip("/")).is_file())
+            if not user and not public_brand:
                 if path.startswith("/employee-api/") or self.command == "POST":
                     MEMBER_STORE.reply(self, 401, {"error": "Vui lòng đăng nhập."})
                 else:
