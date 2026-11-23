@@ -2,6 +2,35 @@
 
 ## Bản cài của tuvungonline-gif
 
+### Cập nhật giao diện Quản lý tài khoản
+
+Chạy `CAP-NHAT-QUAN-LY-TAI-KHOAN.cmd` từ ZIP mới, khi mọi người đã ngừng tạo
+nội dung. Bộ cài dùng số admin đã lưu trong `.env`, sao lưu SQLite và cấu hình,
+cài giao diện đã build sẵn rồi chỉ khởi động lại Canvas. Không cần cài Node
+trên Windows. Gói `account-ui.zip` và `install_account_assets.py` phải đi cùng
+bộ cài; HTML chỉ chuyển sang giao diện mới sau khi các tài nguyên đã sẵn sàng.
+
+- Cụm thao tác trên Canvas thay phiên bản/GitHub bằng **Quản lý tài khoản** → `/account`.
+- Thành viên không thấy menu/nút Cài đặt ở thanh điều hướng desktop, mobile
+  và cụm biểu tượng; admin giữ phần cài đặt hiện tại. Đây là thay đổi hiển thị,
+  không thay cơ chế xác thực hoặc quyền của API cài đặt.
+- Thành viên xem số điện thoại, vai trò, trạng thái, ngày tham gia; sửa tên,
+  email, đơn vị của chính mình. Không thể tự đổi số đăng nhập, vai trò hay gói.
+- Admin tìm/lọc tài khoản, sửa thông tin và ghi chú nội bộ, duyệt/khóa bằng
+  API thành viên hiện có. Ghi chú nội bộ không được trả cho thành viên.
+- Tận dụng bảng `users` và phiên hiện tại. Hồ sơ bổ sung ở `account_profiles`;
+  `payment_history` để trống cho mở rộng sau. Chưa có cổng thanh toán, thao tác
+  thu phí, đăng ký gói hay API tự thay đổi gói.
+
+Kiểm tra: 10 bài HTTP/phân quyền/hồi quy đạt; kiểm tra render component cho
+admin và member đạt; build Vite đạt; bộ cài tài nguyên đã kiểm tra tính đầy đủ,
+chuyển index sau cùng, sao lưu và giữ dữ liệu tài khoản. Trình duyệt thử nghiệm
+không kết nối được dịch vụ HTTP cục bộ trong môi trường này, nên kiểm tra
+trực quan desktop/mobile và bản chạy trên Windows/tên miền còn chờ. Typecheck
+toàn bộ nguồn còn lỗi có sẵn `styles.content` của Ant Design tại
+`model-script-editor.tsx` (không thuộc các tệp thay đổi).
+
+
 ### Đăng ký, duyệt thành viên và thư viện riêng
 
 Tải ZIP mới, giải nén và chạy `CAP-NHAT-THANH-VIEN.cmd`. Bộ cài tự tìm thư mục

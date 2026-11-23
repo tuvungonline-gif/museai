@@ -135,8 +135,11 @@ def _agent_runtime() -> dict[str, str]:
     return payload
 
 
-def _runtime_config() -> str:
-    payload: dict[str, str] = {}
+def _runtime_config(member=None) -> str:
+    payload: dict[str, object] = {}
+    if MEMBERS_ENABLED:
+        payload['MEMBERS_ENABLED'] = True
+        payload['MEMBER_ROLE'] = (member or {}).get('role', 'member')
     for key in ("ANALYTICS_GA4_ID", "ANALYTICS_BAIDU_ID", "MUSE_CHANNEL_NAME"):
         value = os.environ.get(key, "").strip()
         if value:
@@ -216,7 +219,7 @@ class Handler(BaseHTTPRequestHandler):
                 if origin and urlsplit(origin).netloc != self.headers.get("Host"):
                     MEMBER_STORE.reply(self, 403, {"error": "Yêu cầu không hợp lệ."})
                     return
-            if path in ("/prompts", "/members") and self.command in ("GET", "HEAD"):
+            if path in ("/prompts", "/members", "/account") and self.command in ("GET", "HEAD"):
                 if path == "/members" and user["role"] != "admin":
                     self._send(403, b"Admin only", "text/plain", "no-store", head_only)
                     return
@@ -250,7 +253,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, b"ok\n", "text/plain; charset=utf-8", "no-store", head_only)
                 return
             if path == "/config.js":
-                body = _runtime_config().encode("utf-8")
+                body = _runtime_config(user if MEMBERS_ENABLED else None).encode("utf-8")
                 self._send(200, body, "application/javascript; charset=utf-8", "no-store", head_only)
                 return
 

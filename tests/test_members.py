@@ -116,3 +116,42 @@ class MembersTest(unittest.TestCase):
         self.assertIn('HttpOnly',cookie);self.assertIn('SameSite=Lax',cookie)
         for _ in range(20): self.login('0911111111','wrong-password')
         self.assertEqual(self.login('0911111111')[0],429)
+
+    def test_account_profile_scope_and_future_billing_are_inert(self):
+        admin,a,b='0900000000','0911111111','0922222222'
+        for phone in (a,b):
+            self.register(phone);self.approve(phone);self.login(phone)
+        self.assertEqual(self.request('/account',who=a)[0],200)
+        info=self.request('/member-api/account',who=a)[1]
+        self.assertEqual(info['account']['phone'],a)
+        self.assertFalse(info['billing_enabled'])
+        self.assertEqual(info['payments'],[])
+        self.assertNotIn('admin_notes',info['account'])
+        accounts=self.request('/member-api/accounts',who=admin)[1]['accounts']
+        bid=next(x['id'] for x in accounts if x['phone']==b)
+        attack={'id':bid,'display_name':'Thành viên A','email':'a@example.test','company':'Vườn A',
+                'role':'admin','status':'approved','plan_code':'paid','admin_notes':'forged','phone':'0999999999'}
+        self.assertEqual(self.request('/member-api/account',attack,a)[0],200)
+        after=self.request('/member-api/account',who=a)[1]['account']
+        self.assertEqual(after['display_name'],'Thành viên A')
+        self.assertEqual(after['phone'],a)
+        self.assertEqual(after['role'],'member')
+        self.assertEqual(after['plan_code'],'none')
+        self.assertEqual(self.request('/member-api/account',who=b)[1]['account']['display_name'],'')
+        self.assertEqual(self.request('/member-api/accounts',who=a)[0],403)
+        self.assertEqual(self.request('/member-api/accounts',attack,a)[0],403)
+        self.assertEqual(self.request('/member-api/accounts',{'id':bid,'display_name':'Thành viên B','admin_notes':'Chỉ admin thấy'},admin)[0],200)
+        own=self.request('/member-api/account',who=b)[1]['account']
+        self.assertEqual(own['display_name'],'Thành viên B')
+        self.assertNotIn('admin_notes',own)
+        rows=self.request('/member-api/accounts',who=admin)[1]['accounts']
+        self.assertEqual(next(x for x in rows if x['id']==bid)['admin_notes'],'Chỉ admin thấy')
+        self.assertEqual(self.request('/member-api/account',{'email':'bad-address'},a)[0],400)
+        self.assertEqual(self.request('/member-api/account',{'company':'x'},a,csrf=False)[0],403)
+        self.assertIn('"MEMBER_ROLE": "member"',self.request('/config.js',who=a)[1])
+        self.assertIn('"MEMBER_ROLE": "admin"',self.request('/config.js',who=admin)[1])
+        MemberStore(self.root/'members.sqlite3',admin,'owner-password')
+        self.assertEqual(self.request('/member-api/account',who=a)[1]['account']['company'],'Vườn A')
+        with canvas.MEMBER_STORE.db() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM users').fetchone()[0],3)
+            self.assertEqual(db.execute('SELECT count(*) FROM payment_history').fetchone()[0],0)

@@ -51,10 +51,21 @@ foreach ($file in $files) {
     & $python -m py_compile (Join-Path $package $file)
     if ($LASTEXITCODE -ne 0) { throw "Tep $file khong hop le. Chua thay doi gi." }
 }
+$uiArchive = Join-Path $package 'account-ui.zip'
+$uiInstaller = Join-Path $package 'install_account_assets.py'
+if (Test-Path -LiteralPath $uiArchive) {
+    if (-not (Test-Path -LiteralPath $uiInstaller)) { throw 'Thieu install_account_assets.py. Chua thay doi gi.' }
+    & $python $uiInstaller --archive $uiArchive --root $target --check
+    if ($LASTEXITCODE -ne 0) { throw 'Goi giao dien khong hop le. Chua thay doi gi.' }
+}
 $lines = [IO.File]::ReadAllLines($envFile)
 $passwordLine = @($lines | Where-Object { $_ -match '^CANVAS_ACCESS_PASSWORD=.{8,}$' })
 if ($passwordLine.Count -eq 0) { throw 'Can CANVAS_ACCESS_PASSWORD it nhat 8 ky tu trong .env. Chua thay doi gi.' }
 if (-not ($lines | Where-Object { $_ -match '^MUSE_API_KEY=.+$' })) { throw 'Thieu MUSE_API_KEY. Chua thay doi gi.' }
+if (-not $AdminPhone) {
+    $savedPhone = @($lines | Where-Object { $_ -match '^CANVAS_ADMIN_PHONE=.+$' } | Select-Object -First 1)
+    if ($savedPhone.Count -gt 0) { $AdminPhone = $savedPhone[0].Substring('CANVAS_ADMIN_PHONE='.Length).Trim() }
+}
 if (-not $AdminPhone) {
     $localPhone = Join-Path $package 'admin-phone.local.txt'
     if (Test-Path -LiteralPath $localPhone) { $AdminPhone = [IO.File]::ReadAllText($localPhone).Trim() }
@@ -76,8 +87,13 @@ if (Test-Path -LiteralPath $database) {
     if ($LASTEXITCODE -ne 0) { throw 'Khong sao luu duoc thanh vien. Chua thay doi gi.' }
 }
 # Remove old external prompt sources; keep newly added prompts on repeated updates.
-& $python (Join-Path $package 'reset_prompt_library.py') --root $target
-if ($LASTEXITCODE -ne 0) { throw 'Chua don duoc thu vien loi nhac. Chua bat dang nhap thanh vien.' }
+if (Test-Path -LiteralPath $uiArchive) {
+    & $python $uiInstaller --archive $uiArchive --root $target --backup $backup
+    if ($LASTEXITCODE -ne 0) { throw 'Chua cap nhat duoc giao dien. Chua bat dang nhap thanh vien.' }
+} else {
+    & $python (Join-Path $package 'reset_prompt_library.py') --root $target
+    if ($LASTEXITCODE -ne 0) { throw 'Chua don duoc thu vien loi nhac. Chua bat dang nhap thanh vien.' }
+}
 foreach ($file in $files) {
     $source = Join-Path $package $file
     $dest = Join-Path $target $file
@@ -124,4 +140,5 @@ Write-Host "Da cap nhat. ADMIN: $AdminPhone"
 Write-Host 'Mat khau admin: mat khau Canvas hien co (CANVAS_ACCESS_PASSWORD trong .env).'
 Write-Host 'Thanh vien dang ky moi se CHO DUYET. Admin vao /members de duyet hoac khoa.'
 Write-Host 'Thu vien chung va thu vien rieng: /prompts. Khong can khoi dong lai Muse API hoac Tunnel.'
-Start-Process 'https://ms.ibeetool.com/login'
+Write-Host 'Quan ly tai khoan va thong tin thanh vien: https://ms.ibeetool.com/account'
+Start-Process 'https://ms.ibeetool.com/account'

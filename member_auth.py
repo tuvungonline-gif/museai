@@ -51,6 +51,16 @@ class MemberStore:
               CREATE TABLE IF NOT EXISTS prompts (
                 id TEXT PRIMARY KEY, owner TEXT NOT NULL, scope TEXT NOT NULL,
                 title TEXT NOT NULL, content TEXT NOT NULL, updated REAL NOT NULL);
+              CREATE TABLE IF NOT EXISTS account_profiles (
+                user_id TEXT PRIMARY KEY REFERENCES users(id), display_name TEXT NOT NULL DEFAULT '',
+                email TEXT NOT NULL DEFAULT '', company TEXT NOT NULL DEFAULT '',
+                admin_notes TEXT NOT NULL DEFAULT '', plan_code TEXT NOT NULL DEFAULT 'none',
+                plan_status TEXT NOT NULL DEFAULT 'not_configured', updated REAL NOT NULL);
+              CREATE TABLE IF NOT EXISTS payment_history (
+                id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
+                amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, status TEXT NOT NULL,
+                reference TEXT, created REAL NOT NULL);
+              CREATE INDEX IF NOT EXISTS payment_user_index ON payment_history(user_id,created);
             ''')
             if not db.execute("SELECT 1 FROM users WHERE role='admin'").fetchone():
                 db.execute('INSERT INTO users VALUES(?,?,?,?,?,?)',
@@ -61,6 +71,7 @@ class MemberStore:
     def db(self):
         connection = sqlite3.connect(self.path, timeout=10)
         connection.row_factory = sqlite3.Row
+        connection.execute('PRAGMA foreign_keys=ON')
         try:
             with connection: yield connection
         finally: connection.close()
@@ -77,6 +88,17 @@ class MemberStore:
                 JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>? AND u.status='approved' ''',
                 (digest, time.time())).fetchone()
         return dict(row) if row else None
+
+    def account(self, db, ident, admin=False):
+        row = db.execute('''SELECT u.id,u.phone,u.role,u.status,u.created,
+            COALESCE(p.display_name,'') display_name,COALESCE(p.email,'') email,
+            COALESCE(p.company,'') company,COALESCE(p.admin_notes,'') admin_notes,
+            COALESCE(p.plan_code,'none') plan_code,COALESCE(p.plan_status,'not_configured') plan_status
+            FROM users u LEFT JOIN account_profiles p ON p.user_id=u.id WHERE u.id=?''', (ident,)).fetchone()
+        if not row: raise ValueError('Không tìm thấy tài khoản.')
+        record = dict(row)
+        if not admin: record.pop('admin_notes')
+        return record
 
     def reply(self, h, status, value, cookie=None):
         body = json.dumps(value, ensure_ascii=False).encode()
@@ -169,6 +191,39 @@ class MemberStore:
             digest = hashlib.sha256(cookies[COOKIE].value.encode()).hexdigest()
             with self.db() as db: db.execute('DELETE FROM sessions WHERE token=?', (digest,))
             self.reply(h, 200, {'message': 'Đã đăng xuất.'}, cookie=''); return
+        if path in ('/member-api/account', '/member-api/accounts'):
+            managing = path.endswith('/accounts')
+            if managing and user['role'] != 'admin':
+                self.reply(h, 403, {'error': 'Chỉ admin được quản lý tài khoản khác.'}); return
+            with self.db() as db:
+                if method == 'GET':
+                    if managing:
+                        accounts = [self.account(db, row['id'], True) for row in db.execute('SELECT id FROM users ORDER BY created DESC').fetchall()]
+                        self.reply(h, 200, {'accounts': accounts})
+                    else:
+                        account = self.account(db, user['id'], user['role'] == 'admin')
+                        payments = [dict(row) for row in db.execute('SELECT id,amount_minor,currency,status,reference,created FROM payment_history WHERE user_id=? ORDER BY created DESC', (user['id'],)).fetchall()]
+                        self.reply(h, 200, {'account': account, 'payments': payments, 'billing_enabled': False})
+                    return
+                if method == 'POST':
+                    ident = data.get('id') if managing else user['id']
+                    if not isinstance(ident, str): raise ValueError('Tài khoản không hợp lệ.')
+                    existing = self.account(db, ident, True)
+                    values = {}
+                    for key, limit in (('display_name', 100), ('email', 254), ('company', 160)):
+                        value = data.get(key, existing[key])
+                        if not isinstance(value, str) or len(value) > limit: raise ValueError('Thông tin tài khoản không hợp lệ.')
+                        values[key] = value.strip()
+                    if values['email'] and not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', values['email']):
+                        raise ValueError('Địa chỉ email không hợp lệ.')
+                    notes = data.get('admin_notes', existing['admin_notes']) if managing else existing['admin_notes']
+                    if not isinstance(notes, str) or len(notes) > 2000: raise ValueError('Ghi chú tối đa 2.000 ký tự.')
+                    db.execute('''INSERT INTO account_profiles(user_id,display_name,email,company,admin_notes,updated)
+                        VALUES(?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET
+                        display_name=excluded.display_name,email=excluded.email,company=excluded.company,
+                        admin_notes=excluded.admin_notes,updated=excluded.updated''',
+                        (ident, values['display_name'], values['email'], values['company'], notes.strip(), time.time()))
+                    self.reply(h, 200, {'message': 'Đã lưu thông tin tài khoản.'}); return
         if path == '/member-api/members':
             if user['role'] != 'admin':
                 self.reply(h, 403, {'error': 'Chỉ admin được quản lý thành viên.'}); return

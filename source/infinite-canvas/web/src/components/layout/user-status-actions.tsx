@@ -1,11 +1,10 @@
 import type { CSSProperties } from "react";
 import { Tooltip } from "antd";
-import { BookOpen, Keyboard, Puzzle, Settings2 } from "lucide-react";
+import { BookOpen, Keyboard, Puzzle, Settings2, UserRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import { GitHubLink } from "@/components/layout/github-link";
-import { VersionReleaseModal } from "@/components/layout/version-release-modal";
+import { CAN_MANAGE_SETTINGS } from "@/constant/runtime-config";
 import { DOCS_URL } from "@/constant/env";
 import { changeAppLocale, type AppLocale } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -28,9 +27,6 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
     const canvasTheme = canvasThemes[theme];
     const naturalIconClass = "inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-stone-600 transition-colors hover:bg-black/5 hover:text-stone-950 dark:text-stone-300 dark:hover:bg-white/10 dark:hover:text-white [&_svg]:size-4";
     const iconStyle: CSSProperties | undefined = variant === "canvas" ? { color: canvasTheme.node.text } : undefined;
-    const versionStyle = iconStyle;
-    const gitHubClassName = "size-7 text-base";
-    const gitHubStyle = iconStyle;
     const locale = i18n.resolvedLanguage as AppLocale;
     const nextLocale = locale === "vi-VN" ? "en-US" : locale === "en-US" ? "zh-CN" : "vi-VN";
     const languageLabel = t("topNav.switchLanguage", { language: t(nextLocale === "zh-CN" ? "locale.zhCN" : nextLocale === "vi-VN" ? "locale.viVN" : "locale.enUS") });
@@ -45,7 +41,7 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
             <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" className={naturalIconClass} style={iconStyle} aria-label={t("topNav.docs")} title={t("topNav.docs")}>
                 <BookOpen className="size-4" />
             </a>
-            {showConfig ? (
+            {showConfig && CAN_MANAGE_SETTINGS ? (
                 <button type="button" className={naturalIconClass} style={iconStyle} onClick={() => openConfigDialog(false)} aria-label={t("navigation.config")} title={t("navigation.config")}>
                     <Settings2 className="size-4" />
                 </button>
@@ -56,8 +52,10 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
                 </button>
             </Tooltip>
             <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} className={naturalIconClass} style={iconStyle} aria-label={t(theme === "dark" ? "topNav.lightTheme" : "topNav.darkTheme")} title={t(theme === "dark" ? "topNav.lightTheme" : "topNav.darkTheme")} />
-            <VersionReleaseModal style={versionStyle} />
-            <GitHubLink className={cn("bg-transparent hover:bg-transparent dark:hover:bg-transparent", gitHubClassName)} style={gitHubStyle} />
+            <a href="/account" className={cn(naturalIconClass, "w-auto gap-1.5 px-2 text-xs font-medium")} style={iconStyle} aria-label="Quản lý tài khoản" title="Quản lý tài khoản">
+                <UserRound className="size-4" />
+                <span className="hidden sm:inline">Quản lý tài khoản</span>
+            </a>
             {onOpenShortcuts ? (
                 <button type="button" className={naturalIconClass} style={iconStyle} onClick={onOpenShortcuts} aria-label={t("topNav.shortcuts")} title={t("topNav.shortcuts")}>
                     <Keyboard className="size-4" />
