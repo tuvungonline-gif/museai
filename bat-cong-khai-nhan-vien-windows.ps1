@@ -1,3 +1,4 @@
+param([switch]$ConfigureRetention)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $package = $PSScriptRoot
@@ -54,11 +55,21 @@ $key = (($lines | Where-Object { $_ -match '^MUSE_API_KEY=' } | Select-Object -F
 # Check the replacement before touching the running installation.
 & $python -m py_compile $sourceServer
 if ($LASTEXITCODE -ne 0) { throw 'canvas_server.py moi khong hop le. Chua thay doi gi.' }
+$settings = [ordered]@{ CANVAS_HOST = '127.0.0.1'; CANVAS_PUBLIC = '1' }
+if ($ConfigureRetention) {
+    Write-Host 'Anh/video trong muse2api\data\media cu hon thoi gian chon se bi XOA VINH VIEN.'
+    Write-Host 'Link tai tep do se het hieu luc. Ban da tai ve may nhan vien van giu nguyen.'
+    $answer = Read-Host 'Nhap so NGAY luu (vi du 1, 3, 7; nhap 0 de TAT tu xoa)'
+    $days = 0
+    if (-not [int]::TryParse($answer, [ref]$days) -or $days -lt 0 -or $days -gt 3650) {
+        throw 'Can nhap so ngay tu 0 den 3650. Chua thay doi gi.'
+    }
+    $settings['CANVAS_MEDIA_RETENTION_HOURS'] = [string]($days * 24)
+}
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 Copy-Item -LiteralPath $envFile -Destination (Join-Path $target ('.env.backup-public-' + $stamp))
 Copy-Item -LiteralPath $targetServer -Destination (Join-Path $target ('canvas_server.backup-public-' + $stamp + '.py'))
 
-$settings = [ordered]@{ CANVAS_HOST = '127.0.0.1'; CANVAS_PUBLIC = '1' }
 $newLines = [System.Collections.Generic.List[string]]::new()
 $newLines.AddRange([string[]]$lines)
 foreach ($name in $settings.Keys) {
@@ -105,3 +116,10 @@ if (-not $ready) { throw 'Canvas moi chua khoi dong an toan. Xem cua so Muse Can
 Write-Host 'Da bat trang Canvas khong can dang nhap. Khoa Muse2API chi con tren may chu.'
 Write-Host 'Muse API va Cloudflare Tunnel van giu nguyen; khong thay doi cac website khac.'
 Write-Host 'Moi nguoi biet ten mien deu co the dung quota Muse cua ban. Chi chia se cho nhan vien tin cay.'
+if ($ConfigureRetention) {
+    if ($days -gt 0) {
+        Write-Host "Da bat TU XOA tep cu hon $days ngay. Kiem tra moi gio khi Canvas dang chay."
+    } else {
+        Write-Host 'Da TAT tu dong xoa anh/video.'
+    }
+}
