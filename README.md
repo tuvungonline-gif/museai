@@ -2,6 +2,29 @@
 
 ## Bản cài của tuvungonline-gif
 
+### Nơi lưu và tự xóa ảnh/video
+
+Ảnh/video thành phẩm nằm ở `muse2api\data\media` trong thư mục Muse đang chạy
+(`MUSE2API_HOME\data\media` nếu có đặt thư mục riêng). Dữ liệu tài khoản và
+nhiệm vụ ở `muse2api\data`; hồ sơ trình duyệt ở `%USERPROFILE%\muse2api-profiles`.
+
+Để bật tự xóa: tải ZIP mới, giải nén, chạy **`TU-DONG-XOA-ANH-VIDEO.cmd`**
+lúc không có yêu cầu tạo đang chạy. Bộ cài tự tìm Muse đang chạy và yêu cầu
+nhập số **ngày** lưu, ví dụ `1`, `3`, `7`; nhập `0` để tắt. Không tự chọn
+thời hạn nếu bạn chưa nhập. Bộ cài sao lưu cấu hình rồi chỉ khởi động lại
+Canvas; không cần nhập lại tài khoản Muse.
+
+Canvas kiểm tra lúc khởi động và mỗi giờ: xóa vĩnh viễn tệp ảnh/video có lần
+sửa cuối cũ hơn thời hạn. Không đi vào thư mục con, không theo liên kết, không
+xóa tài khoản, cấu hình hoặc tệp tải dở. Khi Canvas tắt thì không dọn; khi mở
+lại sẽ kiểm tra tiếp. Windows có thể giữ khóa tệp đang tải: tệp đó được thử lại
+ở lần sau. Tệp bị xóa sẽ mất liên kết tải trên máy chủ; dữ liệu nhiệm vụ có thể
+vẫn còn. Bản đã tải về hoặc lưu trong trình duyệt nhân viên không bị xóa.
+
+Thiết lập trong `.env`: `CANVAS_MEDIA_RETENTION_HOURS=168` giữ 7 ngày;
+`72` giữ 3 ngày, `24` giữ 1 ngày, `0` tắt. Khởi động lại Canvas sau khi sửa
+bằng tay. Bản cài mặc định chưa bật xóa tự động.
+
 ### Mở web cho nhân viên không cần đăng nhập
 
 Tải repo bằng **Code → Download ZIP**, giải nén vào thư mục mới, bấm đúp
