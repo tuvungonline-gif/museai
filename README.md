@@ -2,7 +2,14 @@
 
 ## Bản cài của tuvungonline-gif
 
+### Giao diện tiếng Việt
+
+Canvas mặc định dùng **tiếng Việt**; nút **VI** trên thanh trên cùng lần lượt chuyển sang tiếng Anh, tiếng Trung rồi trở về tiếng Việt. Trình duyệt đã lưu lựa chọn tiếng Trung trước đây sẽ tự chuyển sang tiếng Việt trong lần cập nhật đầu tiên. Các mục kỹ thuật chưa dịch sẽ hiện tiếng Anh, không thay đổi khóa API, phiên Muse hay dữ liệu đã tạo.
+
+**Cập nhật vào máy Windows đang chạy bản cũ:** tải repo bằng **Code → Download ZIP**, giải nén ra một thư mục mới, bấm đúp `CAP-NHAT-TIENG-VIET-WINDOWS.cmd` trong thư mục mới. Khi được hỏi, dán đường dẫn thư mục Muse **đang chạy**, nơi có `.env`. Bộ cập nhật chỉ sao lưu và thay giao diện `canvas/dist`; sau đó mở lại trang bằng **Ctrl+F5**. Không cần nhập lại tài khoản muse.ai hoặc khởi động lại API. Nếu đã giải nén ZIP đè vào thư mục Muse cũ, chỉ cần tải lại trang bằng Ctrl+F5.
+
 ### Tên miền ms.ibeetool.com
+
 
 Cloudflare đã tạo zone `ibeetool.com` (iNET đã lưu nameserver; chờ Cloudflare xác nhận kích hoạt), Tunnel `museai-ms-ibeetool` và bản ghi `ms` tới Tunnel. Tunnel chuyển `/v1/*` đến Muse API tại `127.0.0.1:1314`, các đường còn lại đến Canvas tại `127.0.0.1:1521`. Trang quản trị API chỉ mở cục bộ trên máy Windows; tài khoản Muse và `.env` không tải lên Cloudflare.
 
