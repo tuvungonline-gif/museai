@@ -209,7 +209,9 @@ class Handler(BaseHTTPRequestHandler):
             headers["Content-Type"] = self.headers.get("Content-Type", "application/json")
         query = urlsplit(self.path).query
         target = upstream_path + ("?" + query if query else "")
-        connection = http.client.HTTPConnection("127.0.0.1", API_PORT, timeout=180)
+        # Muse image/chat requests can run for several minutes; video polls
+        # return sooner, but keep the relay timeout above upstream defaults.
+        connection = http.client.HTTPConnection("127.0.0.1", API_PORT, timeout=660)
         started_response = False
         try:
             connection.request(self.command, target, body=body, headers=headers)
