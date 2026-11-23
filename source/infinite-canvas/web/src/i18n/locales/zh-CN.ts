@@ -345,13 +345,10 @@ export default {
         darkTheme: "切换到深色主题",
     },
     home: {
-        promptError: "获取提示词失败",
-        description: "在 <canvas>无限画布</canvas> 中生成、连接和重组 <content>图片、文字与图形</content>，让创作从单次生成变成连续推演。",
-        start: "开始使用",
-        openCanvas: "打开画布",
-        showcaseTitle: "沉淀每一次好结果",
-        showcaseDescription: "收藏稳定出图的提示词、参考风格和结果图片，让下一次创作从已有经验开始。",
-        viewPrompts: "查看提示词库",
+        title: "用 AI 创作视频和图片",
+        description: "选择工具，将你的想法变成视频或图片。",
+        video: { title: "生成视频", description: "通过提示词或参考图片生成视频。" },
+        image: { title: "生成图片", description: "根据描述生成图片，或改编已有图片。" },
     },
     version: {
         viewUpdates: "查看版本更新",

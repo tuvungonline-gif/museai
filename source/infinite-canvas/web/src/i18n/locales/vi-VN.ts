@@ -142,7 +142,12 @@ export default {
     },
     navigation: { canvas: "Canvas của tôi", image: "Trạm tạo ảnh", video: "Trạm tạo video", prompts: "Thư viện lời nhắc", assets: "Tài sản của tôi", config: "Cài đặt" },
     topNav: { ...enUS.topNav, openMenu: "Mở menu", menu: "Menu điều hướng", navigation: "Điều hướng", openAgent: "Mở Agent", closeAgent: "Đóng Agent", plugins: "Tiện ích nút", docs: "Tài liệu", switchLanguage: "Chuyển sang {{language}}", shortcuts: "Phím tắt", lightTheme: "Chuyển sang giao diện sáng", darkTheme: "Chuyển sang giao diện tối" },
-    home: { ...enUS.home, promptError: "Không tải được lời nhắc", description: "Tạo, kết nối và sắp xếp <content>hình ảnh, văn bản, đồ họa</content> trên <canvas>Canvas vô hạn</canvas>. Biến các ý tưởng riêng lẻ thành quy trình sáng tạo liên tục.", start: "Xem canvas của tôi", openCanvas: "Tạo canvas mới", showcaseTitle: "Lưu giữ mọi kết quả hay", showcaseDescription: "Lưu lời nhắc, ảnh tham chiếu và ảnh đã tạo để lần sau bắt đầu nhanh hơn.", viewPrompts: "Xem thư viện lời nhắc" },
+    home: {
+        title: "Tạo video và hình ảnh với AI",
+        description: "Chọn công cụ để biến ý tưởng thành video hoặc hình ảnh.",
+        video: { title: "Tạo Video", description: "Tạo video từ lời nhắc hoặc ảnh tham chiếu." },
+        image: { title: "Tạo Hình Ảnh", description: "Tạo ảnh từ mô tả hoặc biến tấu từ ảnh có sẵn." },
+    },
     version: { ...enUS.version, viewUpdates: "Xem bản cập nhật", title: "Bản cập nhật", currentVersion: "Phiên bản hiện tại", latestVersion: "Phiên bản mới nhất", checking: "Đang kiểm tra...", checkUpdates: "Kiểm tra cập nhật", latest: "Mới nhất", current: "Hiện tại", types: { added: "Đã thêm", fixed: "Đã sửa", changed: "Đã đổi", optimized: "Đã tối ưu", docs: "Tài liệu" } },
     config: {
         ...enUS.config, title: "Cài đặt và tùy chọn",

@@ -345,13 +345,10 @@ export default {
         darkTheme: "Switch to dark theme",
     },
     home: {
-        promptError: "Failed to load prompts",
-        description: "Generate, connect, and reshape <content>images, text, and graphics</content> in <canvas>Infinite Canvas</canvas>, turning one-off generations into a continuous creative process.",
-        start: "Get started",
-        openCanvas: "Open canvas",
-        showcaseTitle: "Keep every great result",
-        showcaseDescription: "Save reliable prompts, visual references, and generated images so your next creation starts from proven ideas.",
-        viewPrompts: "View prompt library",
+        title: "Create videos and images with AI",
+        description: "Choose a tool to turn your ideas into videos or images.",
+        video: { title: "Create Video", description: "Generate a video from a prompt or a reference image." },
+        image: { title: "Create Image", description: "Generate an image from a description or rework an existing image." },
     },
     version: {
         viewUpdates: "View release updates",
