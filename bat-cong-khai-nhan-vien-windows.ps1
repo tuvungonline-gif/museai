@@ -20,8 +20,17 @@ if (-not ($lines | Where-Object { $_ -match '^MUSE_API_KEY=.+$' })) {
 }
 $key = (($lines | Where-Object { $_ -match '^MUSE_API_KEY=' } | Select-Object -First 1) -replace '^MUSE_API_KEY=', '')
 # Check the replacement before touching the running installation.
-& $python -c 'import ast,sys; ast.parse(open(sys.argv[1],encoding="utf-8").read())' $sourceServer
+& $python -m py_compile $sourceServer
 if ($LASTEXITCODE -ne 0) { throw 'canvas_server.py moi khong hop le. Chua thay doi gi.' }
+# Check the port owner before changing .env or server files.
+$pids = @(Get-NetTCPConnection -LocalPort 1521 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique)
+foreach ($pidToStop in $pids) {
+    $process = Get-CimInstance Win32_Process -Filter "ProcessId=$pidToStop" -ErrorAction SilentlyContinue
+    if (-not $process -or -not $process.CommandLine -or
+        $process.CommandLine.IndexOf($targetServer, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+        throw 'Cong 1521 thuoc chuong trinh khac. Chua thay doi gi.'
+    }
+}
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 Copy-Item -LiteralPath $envFile -Destination (Join-Path $target ('.env.backup-public-' + $stamp))
 Copy-Item -LiteralPath $targetServer -Destination (Join-Path $target ('canvas_server.backup-public-' + $stamp + '.py'))
@@ -40,17 +49,13 @@ foreach ($name in $settings.Keys) {
     if (-not $found) { $newLines.Add("$name=$($settings[$name])") }
 }
 [IO.File]::WriteAllLines($envFile, $newLines, (New-Object System.Text.UTF8Encoding($false)))
-Copy-Item -LiteralPath $sourceServer -Destination $targetServer -Force
+if (-not [string]::Equals($sourceServer, $targetServer, [StringComparison]::OrdinalIgnoreCase)) {
+    Copy-Item -LiteralPath $sourceServer -Destination $targetServer -Force
+}
 
 # Restart only the Canvas Python process in this folder. Keep Muse API,
 # Cloudflare Tunnel and the user's other websites running.
-$pids = @(Get-NetTCPConnection -LocalPort 1521 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique)
 foreach ($pidToStop in $pids) {
-    $process = Get-CimInstance Win32_Process -Filter "ProcessId=$pidToStop" -ErrorAction SilentlyContinue
-    if (-not $process -or -not $process.CommandLine -or
-        $process.CommandLine.IndexOf($targetServer, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
-        throw 'Cong 1521 thuoc chuong trinh khac; khong dung tien trinh do. Hay mo lai Canvas thu cong.'
-    }
     Stop-Process -Id $pidToStop -Force
 }
 for ($i = 0; $i -lt 20; $i++) {
