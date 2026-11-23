@@ -5,15 +5,23 @@ $pids = @(Get-NetTCPConnection -LocalPort 1521 -State Listen -ErrorAction Silent
 $runningFolders = [System.Collections.Generic.List[string]]::new()
 foreach ($pidOnPort in $pids) {
     $owner = Get-CimInstance Win32_Process -Filter "ProcessId=$pidOnPort" -ErrorAction SilentlyContinue
-    if (-not $owner -or -not $owner.ExecutablePath -or -not $owner.CommandLine -or
+    if (-not $owner -or -not $owner.CommandLine -or
         $owner.CommandLine.IndexOf('canvas_server.py', [StringComparison]::OrdinalIgnoreCase) -lt 0) {
         throw "Cong 1521 do tien trinh $pidOnPort khac chiem. Chua thay doi gi."
     }
-    # run-canvas-windows.ps1 starts <Muse>\.venv\Scripts\python.exe.
-    $folder = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $owner.ExecutablePath) '..\..'))
-    $expectedPython = Join-Path $folder '.venv\Scripts\python.exe'
-    if (-not [string]::Equals($owner.ExecutablePath, $expectedPython, [StringComparison]::OrdinalIgnoreCase) -or
-        -not (Test-Path -LiteralPath (Join-Path $folder '.env')) -or
+    # Prefer the actual quoted script path; fall back to the venv executable.
+    $folder = $null
+    $scriptMatch = [regex]::Match($owner.CommandLine, '(?i)"([^"\r\n]+\\canvas_server\.py)"')
+    if ($scriptMatch.Success -and (Test-Path -LiteralPath $scriptMatch.Groups[1].Value)) {
+        $folder = Split-Path -Parent $scriptMatch.Groups[1].Value
+    } elseif ($owner.ExecutablePath) {
+        $exeFolder = Split-Path -Parent $owner.ExecutablePath
+        if ([string]::Equals((Split-Path -Leaf $exeFolder), 'Scripts', [StringComparison]::OrdinalIgnoreCase) -and
+            [string]::Equals((Split-Path -Leaf (Split-Path -Parent $exeFolder)), '.venv', [StringComparison]::OrdinalIgnoreCase)) {
+            $folder = [IO.Path]::GetFullPath((Join-Path $exeFolder '..\..'))
+        }
+    }
+    if (-not $folder -or -not (Test-Path -LiteralPath (Join-Path $folder '.env')) -or
         -not (Test-Path -LiteralPath (Join-Path $folder 'canvas_server.py'))) {
         throw "Khong xac nhan duoc thu muc Muse cua tien trinh $pidOnPort. Chua thay doi gi."
     }
