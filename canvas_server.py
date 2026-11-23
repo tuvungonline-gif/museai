@@ -17,8 +17,10 @@ import mimetypes
 import os
 import re
 import signal
+import stat
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -39,6 +41,7 @@ PUBLIC_API_PATH = re.compile(
     r"videos(?:/[A-Za-z0-9_-]+(?:/content)?)?)$"
 )
 MAX_REQUEST_BYTES = 100 * 1024 * 1024
+MEDIA_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".mp4", ".webm", ".mov"}
 
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("application/javascript", ".mjs")
@@ -49,6 +52,67 @@ mimetypes.add_type("font/woff2", ".woff2")
 mimetypes.add_type("application/wasm", ".wasm")
 mimetypes.add_type("video/mp4", ".mp4")
 mimetypes.add_type("application/manifest+json", ".webmanifest")
+
+
+def _remove_expired_media(directory: Path, hours: int, now: float | None = None) -> tuple[int, int]:
+    """Remove only expired finished media, never directories, links or account files."""
+    if hours <= 0:
+        raise ValueError("Retention must be greater than zero")
+    if (not directory.is_dir() or directory.is_symlink()
+            or getattr(directory, "is_junction", lambda: False)()):
+        return 0, 0
+    cutoff = (time.time() if now is None else now) - hours * 3600
+    removed, freed = 0, 0
+    for file in directory.iterdir():
+        if file.suffix.lower() not in MEDIA_EXTENSIONS:
+            continue
+        try:
+            before = file.lstat()
+            if (not stat.S_ISREG(before.st_mode)
+                    or getattr(before, "st_file_attributes", 0) & 0x400
+                    or before.st_mtime >= cutoff):
+                continue
+            # Keep files that have changed while this cleanup pass was running.
+            current = file.lstat()
+            if ((before.st_ino, before.st_size, before.st_mtime_ns)
+                    != (current.st_ino, current.st_size, current.st_mtime_ns)):
+                continue
+            file.unlink()
+            removed += 1
+            freed += before.st_size
+        except OSError:
+            # Windows may lock a video while it is being downloaded; retry next hour.
+            continue
+    return removed, freed
+
+
+def _start_media_cleanup(stop_event: threading.Event) -> None:
+    try:
+        hours = int(os.environ.get("CANVAS_MEDIA_RETENTION_HOURS", "0"))
+        if hours < 0:
+            raise ValueError
+    except ValueError:
+        print("[media-cleanup] Invalid retention setting; cleanup disabled", flush=True)
+        return
+    if not hours:
+        return
+    home = Path(os.environ.get("MUSE2API_HOME") or BASE_DIR / "muse2api")
+    if not home.is_absolute():
+        home = BASE_DIR / "muse2api" / home
+    directory = home / "data" / "media"
+    print(f"[media-cleanup] Keep {hours} hours; check hourly: {directory}", flush=True)
+
+    def work() -> None:
+        while not stop_event.is_set():
+            try:
+                count, size = _remove_expired_media(directory, hours)
+                if count:
+                    print(f"[media-cleanup] Deleted {count} files, freed {size} bytes", flush=True)
+            except OSError:
+                print("[media-cleanup] Media folder temporarily unavailable; retry next hour", flush=True)
+            stop_event.wait(3600)
+
+    threading.Thread(target=work, name="media-cleanup", daemon=True).start()
 
 
 def _agent_runtime() -> dict[str, str]:
@@ -247,15 +311,22 @@ def main() -> None:
         sys.stderr.write(f"[warn] {ROOT / 'index.html'} 不存在，请先构建前端或设置 CANVAS_ROOT\n")
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     server.daemon_threads = True
+    cleanup_stop = threading.Event()
 
     def stop(_signum, _frame) -> None:
+        cleanup_stop.set()
         # shutdown() 会等待 serve_forever 退出，必须放到别的线程里调用。
         threading.Thread(target=server.shutdown, daemon=True).start()
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     print(f"[canvas] serving {ROOT} on http://{HOST}:{PORT}", flush=True)
-    server.serve_forever()
+    _start_media_cleanup(cleanup_stop)
+    try:
+        server.serve_forever()
+    finally:
+        cleanup_stop.set()
+        server.server_close()
 
 
 if __name__ == "__main__":
