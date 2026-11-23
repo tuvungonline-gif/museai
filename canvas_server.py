@@ -12,8 +12,10 @@ from __future__ import annotations
 import json
 import base64
 import hmac
+import http.client
 import mimetypes
 import os
+import re
 import signal
 import sys
 import threading
@@ -28,6 +30,15 @@ HOST = os.environ.get("CANVAS_HOST", "0.0.0.0")
 PORT = int(os.environ.get("CANVAS_PORT", "1521"))
 ACCESS_USER = os.environ.get("CANVAS_ACCESS_USER", "")
 ACCESS_PASSWORD = os.environ.get("CANVAS_ACCESS_PASSWORD", "")
+PUBLIC_CANVAS = os.environ.get("CANVAS_PUBLIC", "").lower() in ("1", "true", "yes")
+API_KEY = os.environ.get("MUSE_API_KEY", "").strip()
+API_PORT = int(os.environ.get("MUSE2API_PORT", "1314"))
+PUBLIC_PREFIX = "/employee-api/v1/"
+PUBLIC_API_PATH = re.compile(
+    r"^/v1/(?:models|chat/completions|images/(?:generations|edits)|"
+    r"videos(?:/[A-Za-z0-9_-]+(?:/content)?)?)$"
+)
+MAX_REQUEST_BYTES = 100 * 1024 * 1024
 
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("application/javascript", ".mjs")
@@ -64,18 +75,24 @@ def _runtime_config() -> str:
         value = os.environ.get(key, "").strip()
         if value:
             payload[key] = value
-    payload.update(_agent_runtime())
-    base = os.environ.get("MUSE_API_BASE", "").strip().rstrip("/")
+    if not PUBLIC_CANVAS:
+        payload.update(_agent_runtime())
+    base = ("/employee-api" if PUBLIC_CANVAS else os.environ.get("MUSE_API_BASE", "").strip().rstrip("/"))
     if base:
         payload["MUSE_API_BASE"] = base
-    key = os.environ.get("MUSE_API_KEY", "").strip()
+    # Public visitors receive a non-secret placeholder. The server adds the real key
+    # only for the allowlisted generation endpoints below.
+    key = "public-canvas" if PUBLIC_CANVAS else API_KEY
     if key:
         payload["MUSE_API_KEY"] = key
-    return (
+    script = (
         "window.__RUNTIME_CONFIG__ = Object.assign({}, window.__RUNTIME_CONFIG__, "
         + json.dumps(payload, ensure_ascii=False)
         + ");\n"
     )
+    if PUBLIC_CANVAS:
+        script += 'window.__RUNTIME_CONFIG__.MUSE_API_BASE = window.location.origin + "/employee-api";\n'
+    return script
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -87,6 +104,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_HEAD(self) -> None:  # noqa: N802
         self._serve(head_only=True)
+
+    def do_POST(self) -> None:  # noqa: N802
+        self._serve(head_only=False)
 
     def log_message(self, fmt: str, *args) -> None:
         sys.stdout.write("%s - %s\n" % (self.log_date_time_string(), fmt % args))
@@ -103,7 +123,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def _serve(self, head_only: bool) -> None:
-        if ACCESS_PASSWORD:
+        if ACCESS_PASSWORD and not PUBLIC_CANVAS:
             supplied = self.headers.get("Authorization", "")
             expected = "Basic " + base64.b64encode(
                 f"{ACCESS_USER or 'admin'}:{ACCESS_PASSWORD}".encode("utf-8")
@@ -117,6 +137,12 @@ class Handler(BaseHTTPRequestHandler):
                 return
         path = unquote(urlsplit(self.path).path)
         try:
+            if path.startswith("/employee-api/"):
+                self._public_api(path, head_only)
+                return
+            if self.command == "POST":
+                self._send(405, b"method not allowed\n", "text/plain", "no-store", False)
+                return
             if path == "/healthz":
                 self._send(200, b"ok\n", "text/plain; charset=utf-8", "no-store", head_only)
                 return
@@ -154,8 +180,65 @@ class Handler(BaseHTTPRequestHandler):
             self._send(500, f"读取文件失败：{exc}\n".encode("utf-8"),
                        "text/plain; charset=utf-8", "no-store", head_only)
 
+    def _public_api(self, path: str, head_only: bool) -> None:
+        if not PUBLIC_CANVAS or not API_KEY or self.command not in ("GET", "POST") or head_only:
+            self._send(404, b"not found\n", "text/plain", "no-store", head_only)
+            return
+        if not path.startswith(PUBLIC_PREFIX):
+            self._send(404, b"not found\n", "text/plain", "no-store", False)
+            return
+        upstream_path = "/v1/" + path[len(PUBLIC_PREFIX):]
+        if not PUBLIC_API_PATH.fullmatch(upstream_path):
+            self._send(404, b"not found\n", "text/plain", "no-store", False)
+            return
+        if self.command == "POST" and upstream_path not in (
+            "/v1/chat/completions", "/v1/images/generations", "/v1/images/edits", "/v1/videos"
+        ):
+            self._send(405, b"method not allowed\n", "text/plain", "no-store", False)
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = -1
+        if length < 0 or length > MAX_REQUEST_BYTES or self.headers.get("Transfer-Encoding"):
+            self._send(413, b"request too large\n", "text/plain", "no-store", False)
+            return
+        body = self.rfile.read(length) if length else None
+        headers = {"Authorization": "Bearer " + API_KEY, "Accept": self.headers.get("Accept", "*/*")}
+        if body is not None:
+            headers["Content-Type"] = self.headers.get("Content-Type", "application/json")
+        query = urlsplit(self.path).query
+        target = upstream_path + ("?" + query if query else "")
+        connection = http.client.HTTPConnection("127.0.0.1", API_PORT, timeout=180)
+        started_response = False
+        try:
+            connection.request(self.command, target, body=body, headers=headers)
+            response = connection.getresponse()
+            self.send_response(response.status)
+            self.send_header("Content-Type", response.getheader("Content-Type", "application/octet-stream"))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            if response.getheader("Content-Length"):
+                self.send_header("Content-Length", response.getheader("Content-Length"))
+            else:
+                self.send_header("Connection", "close")
+                self.close_connection = True
+            self.end_headers()
+            started_response = True
+            while chunk := response.read(64 * 1024):
+                self.wfile.write(chunk)
+        except (OSError, http.client.HTTPException) as exc:
+            self.log_message("Muse API proxy error: %s", exc)
+            if not started_response:
+                self._send(502, b"Muse API unavailable\n", "text/plain", "no-store", False)
+            self.close_connection = True
+        finally:
+            connection.close()
+
 
 def main() -> None:
+    if PUBLIC_CANVAS and (HOST not in ("127.0.0.1", "::1", "localhost") or not API_KEY):
+        raise SystemExit("Public canvas requires CANVAS_HOST=127.0.0.1 and MUSE_API_KEY")
     if HOST not in ("127.0.0.1", "::1", "localhost") and not ACCESS_PASSWORD:
         raise SystemExit("Set CANVAS_ACCESS_PASSWORD before binding the canvas to a public interface")
     if not (ROOT / "index.html").is_file():
