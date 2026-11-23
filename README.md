@@ -2,6 +2,13 @@
 
 ## Bản cài của tuvungonline-gif
 
+### Xóa toàn bộ thư viện lời nhắc cũ
+
+Tải ZIP mới, giải nén, chạy `XOA-THU-VIEN-LOI-NHAC.cmd`. Bộ cập nhật tự tìm thư mục Muse đang giữ cổng 1521 và thay riêng giao diện thư viện, không cần khởi động lại dịch vụ. Mỗi người mở lại web bằng Ctrl+F5 để dọn các nguồn lời nhắc và bộ nhớ đệm `prompt_cache` cũ trong trình duyệt của họ. Bản này không tạo tài khoản thành viên hay thư viện chung của admin.
+
+Tệp giao diện mới dùng tên khác để tránh bộ nhớ đệm cũ; chỉ thư viện lời nhắc bị dọn, không xóa canvas, tài sản, ảnh/video, tài khoản Muse hay cấu hình. Việc dọn dữ liệu trình duyệt diễn ra một lần, không lặp lại với lời nhắc mới. Nếu cài lại một bản giao diện cũ sau này, chạy lại bộ cập nhật để bỏ nguồn mặc định lần nữa.
+
+
 ### Nơi lưu và tự xóa ảnh/video
 
 Ảnh/video thành phẩm nằm ở `muse2api\data\media` trong thư mục Muse đang chạy
