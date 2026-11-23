@@ -5,8 +5,9 @@
 ### Mở web cho nhân viên không cần đăng nhập
 
 Tải repo bằng **Code → Download ZIP**, giải nén vào thư mục mới, bấm đúp
-`BAT-CONG-KHAI-NHAN-VIEN-WINDOWS.cmd`. Nếu được hỏi, dán đường dẫn thư mục Muse
-**đang chạy** (thư mục chứa `.env`, `canvas_server.py`, `.venv`). Chương trình
+`BAT-CONG-KHAI-NHAN-VIEN-WINDOWS.cmd`. Bộ cài tự tìm thư mục Muse đang giữ
+cổng 1521. Chỉ khi Canvas đã tắt mới cần dán đường dẫn thư mục Muse chứa
+`.env`, `canvas_server.py`, `.venv`. Chương trình
 sao lưu `.env` và server, đặt `CANVAS_PUBLIC=1`, chỉ khởi động lại cửa sổ
 **Muse Canvas**; Muse API, Cloudflare Tunnel và các web khác không bị khởi động lại.
 Sau đó kiểm tra [ms.ibeetool.com](https://ms.ibeetool.com/) bằng cửa sổ ẩn danh.
