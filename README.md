@@ -2,6 +2,30 @@
 
 ## Bản cài của tuvungonline-gif
 
+### Mở web cho nhân viên không cần đăng nhập
+
+Tải repo bằng **Code → Download ZIP**, giải nén vào thư mục mới, bấm đúp
+`BAT-CONG-KHAI-NHAN-VIEN-WINDOWS.cmd`. Nếu được hỏi, dán đường dẫn thư mục Muse
+**đang chạy** (thư mục chứa `.env`, `canvas_server.py`, `.venv`). Chương trình
+sao lưu `.env` và server, đặt `CANVAS_PUBLIC=1`, chỉ khởi động lại cửa sổ
+**Muse Canvas**; Muse API, Cloudflare Tunnel và các web khác không bị khởi động lại.
+Sau đó kiểm tra [ms.ibeetool.com](https://ms.ibeetool.com/) bằng cửa sổ ẩn danh.
+
+Trang công khai không hỏi mật khẩu và không gửi khóa `MUSE_API_KEY` hoặc Agent
+token đến trình duyệt. Các lệnh tạo ảnh/video/chat đi qua
+`/employee-api/v1/*` trên Canvas, được giới hạn vào các tác vụ cần thiết;
+Canvas tự thêm khóa thật khi gọi API nội bộ ở `127.0.0.1:1314`. Trang quản trị
+Muse2API trên máy chủ (`http://127.0.0.1:1314/admin`) vẫn cần khóa riêng.
+Nhân viên không cần cài tiện ích nhập cookie; chỉ người quản trị dùng tiện ích
+để đưa tài khoản muse.ai của mình vào **Account Pool**. Khi `Available = 0`,
+web có thể mở nhưng không tạo được ảnh/video.
+
+**Lưu ý:** chế độ không đăng nhập cho phép bất kỳ ai biết tên miền dùng chung
+quota tài khoản Muse; chưa có tài khoản nhân viên, giới hạn theo người hay lịch
+sử dùng chung. Canvas của mỗi nhân viên lưu trong trình duyệt của họ. Tính năng
+Agent sử dụng token quản trị được tắt trong chế độ công khai.
+
+
 ### Giao diện tiếng Việt
 
 Canvas mặc định dùng **tiếng Việt**; nút **VI** trên thanh trên cùng lần lượt chuyển sang tiếng Anh, tiếng Trung rồi trở về tiếng Việt. Trình duyệt đã lưu lựa chọn tiếng Trung trước đây sẽ tự chuyển sang tiếng Việt trong lần cập nhật đầu tiên. Các mục kỹ thuật chưa dịch sẽ hiện tiếng Anh, không thay đổi khóa API, phiên Muse hay dữ liệu đã tạo.
