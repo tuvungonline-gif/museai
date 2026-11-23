@@ -38,7 +38,7 @@ export default function IndexPage() {
     }, [message]);
 
     return (
-        <main className="relative h-full overflow-y-auto bg-background bg-[radial-gradient(#c8e8f7_1px,transparent_1px)] [background-size:16px_16px] text-[#102442] dark:bg-[radial-gradient(rgba(22,185,244,.18)_1px,transparent_1px)] dark:text-white">
+        <main className="relative h-full overflow-y-auto bg-background bg-[radial-gradient(#d9dfff_1px,transparent_1px)] [background-size:16px_16px] text-[#102442] dark:bg-[radial-gradient(rgba(3,42,234,.18)_1px,transparent_1px)] dark:text-white">
             <section className="relative mx-auto min-h-[calc(100vh-4rem)] max-w-7xl overflow-hidden px-6">
                 <div className="pointer-events-none absolute left-[15%] top-24 size-20 rounded-full border border-dashed border-stone-200 dark:border-stone-800" />
                 <div className="pointer-events-none absolute right-[23%] top-[48%] size-20 rounded-full border border-dashed border-stone-200 dark:border-stone-800" />
@@ -48,7 +48,7 @@ export default function IndexPage() {
                     <img src="/brand/logo-vertical-dark.svg" alt="IBEE" className="mb-6 hidden h-32 w-auto max-w-[80vw] dark:block sm:h-40" />
                     <h1 className="text-balance text-2xl font-semibold tracking-tight text-[#102442] dark:text-white sm:text-3xl">Smart tools. Simple work.</h1>
                     <p className="mt-8 max-w-3xl text-balance text-lg leading-8 text-stone-500 dark:text-stone-400">
-                        <Trans i18nKey="home.description" components={{ canvas: <Highlighter action="underline" color="#FFC928" />, content: <Highlighter action="highlight" color="#DDF5FF" /> }} />
+                        <Trans i18nKey="home.description" components={{ canvas: <Highlighter action="underline" color="#fda003" />, content: <Highlighter action="highlight" color="#eef1ff" /> }} />
                     </p>
                     <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
                         <Button type="primary" size="large" onClick={() => navigate(`/${primaryTool.slug}`)} icon={<ArrowRight className="size-4" />} iconPlacement="end">

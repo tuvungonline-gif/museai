@@ -36,16 +36,16 @@ export function AppTopNav() {
         <>
             {!hideHeader ? (
                 <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-sky-100 bg-background/90 backdrop-blur-xl dark:border-sky-900">
-                    <div className="mx-auto flex h-full max-w-7xl items-stretch justify-between gap-2 px-3 sm:px-6 md:gap-5">
+                    <div className="mx-auto flex h-full max-w-7xl items-stretch justify-between gap-1 px-2 sm:px-6 md:gap-5">
                         <div className="flex min-w-0 items-center">
-                            <Link to="/" className="flex h-full shrink-0 items-center gap-1.5 text-sm font-semibold leading-none tracking-tight text-[#102442] transition hover:text-[#16B9F4] dark:text-white">
+                            <Link to="/" className="flex h-full shrink-0 items-center gap-1.5 text-sm font-semibold leading-none tracking-tight text-[#102442] transition hover:text-[#032aea] dark:text-white">
                                 <img src="/brand/bee-symbol.svg" alt="" width="30" height="30" className="size-7 shrink-0" />
                                 <span className="hidden text-base font-bold tracking-[.08em] min-[390px]:inline">IBEE</span>
                             </Link>
 
                             <button
                                 type="button"
-                                className="ml-3 inline-flex size-8 shrink-0 items-center justify-center text-stone-600 transition hover:text-stone-950 md:hidden dark:text-stone-300 dark:hover:text-white"
+                                className="ml-1 inline-flex size-8 shrink-0 items-center justify-center text-stone-600 transition hover:text-stone-950 md:hidden dark:text-stone-300 dark:hover:text-white"
                                 onClick={() => setMobileNavOpen(true)}
                                 aria-label={t("topNav.openMenu")}
                                 title={t("topNav.menu")}
@@ -76,7 +76,7 @@ export function AppTopNav() {
                             </nav>
                         </div>
 
-                        <div className="my-auto flex h-9 min-w-0 items-center justify-end gap-2 justify-self-end whitespace-nowrap">
+                        <div className="my-auto flex h-9 min-w-0 items-center justify-end gap-0 sm:gap-2 justify-self-end whitespace-nowrap">
                             <Tooltip title={t(panelOpen ? "topNav.closeAgent" : "topNav.openAgent")}>
                                 <Button type="text" shape="circle" className="!h-8 !w-8 !min-w-8" icon={<Bot className="size-4" />} onClick={togglePanel} aria-label={t(panelOpen ? "topNav.closeAgent" : "topNav.openAgent")} />
                             </Tooltip>
