@@ -55,13 +55,13 @@ Repo này lưu các tệp cấu hình và bản vá bảo vệ canvas. Sau khi c
 
 Để chạy thử trên máy riêng: cài Python 3.10+, Chromium; tạo môi trường Python `.venv` và cài `muse2api/requirements.txt`; tạo `.env` từ `.env.example`, đặt `CANVAS_HOST=127.0.0.1`, `MUSE2API_HOST=127.0.0.1`, mật khẩu canvas và khóa nội bộ ngẫu nhiên. Chạy `bash start-api.sh` và `bash start-canvas.sh` ở hai cửa sổ. Nhập phiên tài khoản Muse của chính bạn trong trang quản trị để thử tạo ảnh/video. Bản cài đầy đủ `install.sh` còn yêu cầu DeepSeek key để chạy Agent.
 
-Khi gắn tên miền, dùng HTTPS và đặt mật khẩu `CANVAS_ACCESS_PASSWORD`; trang canvas sẽ từ chối khởi động trên giao diện mạng nếu chưa đặt mật khẩu. Bảo vệ riêng địa chỉ API và trang quản trị bằng reverse proxy, không công khai cổng Chromium/CDP.
+Khi gắn tên miền ở chế độ riêng tư, dùng HTTPS và đặt mật khẩu `CANVAS_ACCESS_PASSWORD`. Để mở cho nhân viên không cần đăng nhập, dùng chế độ `CANVAS_PUBLIC=1` nêu phía trên; Canvas chỉ lắng nghe `127.0.0.1` và không gửi khóa thật vào trình duyệt. Bảo vệ riêng địa chỉ API và trang quản trị bằng reverse proxy, không công khai cổng Chromium/CDP.
 
 > 把 **Muse(muse.ai)** 的生图 / 生视频 / 对话能力接进 **无限画布**，再用 **DeepSeek + Codex Agent** 让 AI 直接操作画布。
 >
 > A self-hosted AI canvas that connects **Muse(muse.ai)** image / video / chat models to **Infinite Canvas**, with a server-side **DeepSeek + Codex Agent** that can operate the canvas.
 
-> **This fork:** Set `CANVAS_ACCESS_PASSWORD` in `.env` before exposing the canvas on a network interface. The canvas returns its gateway key and Agent token to authenticated browsers through `/config.js`, so use HTTPS and keep the canvas private. For a local smoke test without DeepSeek, set `CANVAS_HOST=127.0.0.1`, leave `DEEPSEEK_API_KEY` empty, install `muse2api/requirements.txt` in `.venv`, and run `start-api.sh` plus `start-canvas.sh`. The full `install.sh` requires a DeepSeek key for its optional Agent. Protect the Muse gateway/admin separately at the reverse proxy; the canvas password does not guard the gateway.
+> **This fork:** Set `CANVAS_ACCESS_PASSWORD` in `.env` before exposing the canvas on a network interface. The private canvas returns its gateway key and Agent token to authenticated browsers through `/config.js`. Public employee mode keeps those secrets on the server and requires loopback binding. For a local smoke test without DeepSeek, set `CANVAS_HOST=127.0.0.1`, leave `DEEPSEEK_API_KEY` empty, install `muse2api/requirements.txt` in `.venv`, and run `start-api.sh` plus `start-canvas.sh`. The full `install.sh` requires a DeepSeek key for its optional Agent. Protect the Muse gateway/admin separately at the reverse proxy; the canvas password does not guard the gateway.
 
 [中文](#中文) · [English](#english) · [GitHub](https://github.com/huwanbin/Muse-Canvas)
 
