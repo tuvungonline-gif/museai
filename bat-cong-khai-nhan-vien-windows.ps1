@@ -1,11 +1,35 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $package = $PSScriptRoot
-$target = $package
-if (-not (Test-Path -LiteralPath (Join-Path $target '.env'))) {
-    $target = (Read-Host 'Dan THU MUC Muse dang chay, noi co file .env').Trim('"')
+$pids = @(Get-NetTCPConnection -LocalPort 1521 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique)
+$runningFolders = [System.Collections.Generic.List[string]]::new()
+foreach ($pidOnPort in $pids) {
+    $owner = Get-CimInstance Win32_Process -Filter "ProcessId=$pidOnPort" -ErrorAction SilentlyContinue
+    if (-not $owner -or -not $owner.ExecutablePath -or -not $owner.CommandLine -or
+        $owner.CommandLine.IndexOf('canvas_server.py', [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+        throw "Cong 1521 do tien trinh $pidOnPort khac chiem. Chua thay doi gi."
+    }
+    # run-canvas-windows.ps1 starts <Muse>\.venv\Scripts\python.exe.
+    $folder = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $owner.ExecutablePath) '..\..'))
+    $expectedPython = Join-Path $folder '.venv\Scripts\python.exe'
+    if (-not [string]::Equals($owner.ExecutablePath, $expectedPython, [StringComparison]::OrdinalIgnoreCase) -or
+        -not (Test-Path -LiteralPath (Join-Path $folder '.env')) -or
+        -not (Test-Path -LiteralPath (Join-Path $folder 'canvas_server.py'))) {
+        throw "Khong xac nhan duoc thu muc Muse cua tien trinh $pidOnPort. Chua thay doi gi."
+    }
+    if (-not $runningFolders.Contains($folder)) { $runningFolders.Add($folder) }
 }
-$target = (Resolve-Path -LiteralPath $target).Path
+if ($runningFolders.Count -gt 1) { throw 'Nhieu ban Muse cung chiem cong 1521. Chua thay doi gi.' }
+if ($runningFolders.Count -eq 1) {
+    $target = $runningFolders[0]
+    Write-Host "Da tim thay thu muc Muse DANG CHAY: $target"
+} else {
+    $target = $package
+    if (-not (Test-Path -LiteralPath (Join-Path $target '.env'))) {
+        $target = (Read-Host 'Cong 1521 dang tat. Dan THU MUC Muse co file .env').Trim('"')
+    }
+    $target = (Resolve-Path -LiteralPath $target).Path
+}
 $envFile = Join-Path $target '.env'
 $targetServer = Join-Path $target 'canvas_server.py'
 $sourceServer = Join-Path $package 'canvas_server.py'
@@ -22,15 +46,6 @@ $key = (($lines | Where-Object { $_ -match '^MUSE_API_KEY=' } | Select-Object -F
 # Check the replacement before touching the running installation.
 & $python -m py_compile $sourceServer
 if ($LASTEXITCODE -ne 0) { throw 'canvas_server.py moi khong hop le. Chua thay doi gi.' }
-# Check the port owner before changing .env or server files.
-$pids = @(Get-NetTCPConnection -LocalPort 1521 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique)
-foreach ($pidToStop in $pids) {
-    $process = Get-CimInstance Win32_Process -Filter "ProcessId=$pidToStop" -ErrorAction SilentlyContinue
-    if (-not $process -or -not $process.CommandLine -or
-        $process.CommandLine.IndexOf($targetServer, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
-        throw 'Cong 1521 thuoc chuong trinh khac. Chua thay doi gi.'
-    }
-}
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 Copy-Item -LiteralPath $envFile -Destination (Join-Path $target ('.env.backup-public-' + $stamp))
 Copy-Item -LiteralPath $targetServer -Destination (Join-Path $target ('canvas_server.backup-public-' + $stamp + '.py'))
