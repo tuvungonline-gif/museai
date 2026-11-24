@@ -8,6 +8,7 @@ import threading
 from collections import Counter
 from pathlib import Path
 from zipfile import ZipFile
+from imageio_ffmpeg import get_ffmpeg_exe
 from playwright.sync_api import sync_playwright, expect
 
 
@@ -25,7 +26,7 @@ with tempfile.TemporaryDirectory() as directory, ZipFile("account-ui.zip") as bu
     root = Path(directory)
     bundle.extractall(root)
     video = root / "mock.mp4"
-    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+    subprocess.run([get_ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
                     "-i", "color=c=blue:s=96x96:r=10:d=1", "-c:v", "libx264",
                     "-movflags", "+faststart", str(video)], check=True)
     sample = video.read_bytes()
