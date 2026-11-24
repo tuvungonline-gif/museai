@@ -64,6 +64,7 @@ class MembersTest(unittest.TestCase):
     def test_approval_lock_and_secrets(self):
         self.assertEqual(self.request('/')[0], 303)
         self.assertEqual(self.request('/employee-api/v1/models')[0], 401)
+        self.assertEqual(self.request('/employee-api/v1/media/bd8_test.mp4')[0], 401)
         self.assertEqual(self.request('/member-api/register', {'phone':'0911111111','password':'member-password','password_confirm':'wrong'})[0],400)
         self.assertEqual(self.register('0911111111')[0], 201)
         self.assertEqual(self.login('+84911111111')[0], 403)

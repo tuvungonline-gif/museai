@@ -16,6 +16,7 @@ spec.loader.exec_module(canvas)
 
 class FakeMuse(BaseHTTPRequestHandler):
     requests = []
+    video = b"0123456789"
 
     def do_GET(self):
         self.reply()
@@ -25,7 +26,27 @@ class FakeMuse(BaseHTTPRequestHandler):
 
     def reply(self):
         self.requests.append((self.command, self.path, self.headers.get("Authorization")))
-        data = json.dumps({"ok": True}).encode()
+        if self.path == "/v1/media/bd8_test.mp4":
+            partial = self.headers.get("Range") == "bytes=0-1"
+            self.send_response(206 if partial else 200)
+            data = self.video[:2] if partial else self.video
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Accept-Ranges", "bytes")
+            if partial:
+                self.send_header("Content-Range", "bytes 0-1/10")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        result = {"ok": True}
+        if self.path == "/v1/videos/video-123":
+            result = {
+                "status": "completed",
+                "url": "http://127.0.0.1:1314/v1/media/bd8_test.mp4",
+                "result": {"url": "/v1/media/bd8_test.mp4"},
+                "external": {"url": "https://example.com/video.mp4"},
+            }
+        data = json.dumps(result).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
@@ -58,13 +79,17 @@ class PublicCanvasTest(unittest.TestCase):
             server.server_close()
         self.temp.cleanup()
 
-    def request(self, method, path, body=None):
+    def fetch(self, method, path, body=None, headers=None):
         client = http.client.HTTPConnection("127.0.0.1", self.site.server_port, timeout=5)
-        client.request(method, path, body=body, headers={"Authorization": "Bearer fake-browser-value"})
+        client.request(method, path, body=body, headers={"Authorization": "Bearer fake-browser-value", **(headers or {})})
         response = client.getresponse()
-        result = (response.status, response.read().decode())
+        result = (response.status, dict(response.getheaders()), response.read())
         client.close()
         return result
+
+    def request(self, method, path, body=None):
+        status, _, data = self.fetch(method, path, body)
+        return status, data.decode()
 
     def test_public_page_uses_private_proxy_without_exposing_secrets(self):
         self.assertEqual(self.request("GET", "/")[0], 200)
@@ -85,6 +110,37 @@ class PublicCanvasTest(unittest.TestCase):
         self.assertEqual(self.request("GET", "/employee-api/admin/accounts")[0], 404)
         self.assertEqual(self.request("POST", "/employee-api/v1/models", b"")[0], 405)
         self.assertEqual(self.request("GET", "/employee-api/v1/media/something")[0], 404)
+        self.assertEqual(FakeMuse.requests, [])
+
+    def test_completed_video_supports_playback_and_download(self):
+        status, payload = self.request("GET", "/employee-api/v1/videos/video-123")
+        self.assertEqual(status, 200)
+        video = json.loads(payload)
+        path = "/employee-api/v1/media/bd8_test.mp4"
+        self.assertEqual(video["url"], path)
+        self.assertEqual(video["result"]["url"], path)
+        self.assertEqual(video["external"]["url"], "https://example.com/video.mp4")
+
+        status, headers, data = self.fetch("GET", path, headers={"Range": "bytes=0-1"})
+        self.assertEqual((status, data), (206, FakeMuse.video[:2]))
+        self.assertEqual(headers["Content-Type"], "video/mp4")
+        self.assertEqual(headers["Content-Range"], "bytes 0-1/10")
+        self.assertEqual(headers["Accept-Ranges"], "bytes")
+        self.assertNotIn("Content-Disposition", headers)
+        self.assertEqual(headers["Cache-Control"], "no-store")
+
+        status, headers, data = self.fetch("GET", path + "?download=1")
+        self.assertEqual((status, data), (200, FakeMuse.video))
+        self.assertEqual(headers["Content-Disposition"], 'attachment; filename="bd8_test.mp4"')
+        self.assertEqual(FakeMuse.requests[-1], ("GET", "/v1/media/bd8_test.mp4", "Bearer private-api-key"))
+        status, headers, data = self.fetch("HEAD", path)
+        self.assertEqual((status, data, headers["Content-Length"]), (200, b"", "10"))
+
+    def test_video_relay_limits_paths_and_methods(self):
+        for path in ("folder/bd8_test.mp4", "folder%2Fbd8_test.mp4", "accounts.json", "photo.webp"):
+            with self.subTest(path=path):
+                self.assertEqual(self.request("GET", "/employee-api/v1/media/" + path)[0], 404)
+        self.assertEqual(self.request("POST", "/employee-api/v1/media/bd8_test.mp4", b"{}")[0], 405)
         self.assertEqual(FakeMuse.requests, [])
 
 

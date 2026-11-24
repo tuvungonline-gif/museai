@@ -23,7 +23,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT = Path(os.environ.get("CANVAS_ROOT") or BASE_DIR / "canvas" / "dist").resolve()
@@ -42,6 +42,8 @@ PUBLIC_API_PATH = re.compile(
     r"^/v1/(?:models|chat/completions|images/(?:generations|edits)|"
     r"videos(?:/[A-Za-z0-9_-]+(?:/content)?)?)$"
 )
+VIDEO_MEDIA_PATH = re.compile(r"/v1/media/([A-Za-z0-9_-]{1,180}\.(?:mp4|webm|mov))", re.IGNORECASE)
+VIDEO_STATUS_PATH = re.compile(r"/v1/videos/[A-Za-z0-9_-]+")
 MAX_REQUEST_BYTES = 100 * 1024 * 1024
 MEDIA_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".mp4", ".webm", ".mov"}
 
@@ -54,6 +56,25 @@ mimetypes.add_type("font/woff2", ".woff2")
 mimetypes.add_type("application/wasm", ".wasm")
 mimetypes.add_type("video/mp4", ".mp4")
 mimetypes.add_type("application/manifest+json", ".webmanifest")
+
+
+def _rewrite_video_links(value):
+    """Give browser clients same-origin links for files produced by Muse."""
+    if isinstance(value, list):
+        return [_rewrite_video_links(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    result = {}
+    for key, item in value.items():
+        if key in ("url", "video_url", "result_url") and isinstance(item, str):
+            try:
+                url = urlsplit(item)
+                if url.scheme in ("", "http", "https") and VIDEO_MEDIA_PATH.fullmatch(url.path):
+                    item = "/employee-api" + url.path
+            except ValueError:
+                pass
+        result[key] = _rewrite_video_links(item)
+    return result
 
 
 def _remove_expired_media(directory: Path, hours: int, now: float | None = None) -> tuple[int, int]:
@@ -292,19 +313,24 @@ class Handler(BaseHTTPRequestHandler):
                        "text/plain; charset=utf-8", "no-store", head_only)
 
     def _public_api(self, path: str, head_only: bool) -> None:
-        if not (PUBLIC_CANVAS or MEMBERS_ENABLED) or not API_KEY or self.command not in ("GET", "POST") or head_only:
+        if not (PUBLIC_CANVAS or MEMBERS_ENABLED) or not API_KEY:
             self._send(404, b"not found\n", "text/plain", "no-store", head_only)
             return
         if not path.startswith(PUBLIC_PREFIX):
-            self._send(404, b"not found\n", "text/plain", "no-store", False)
+            self._send(404, b"not found\n", "text/plain", "no-store", head_only)
             return
         upstream_path = "/v1/" + path[len(PUBLIC_PREFIX):]
-        if not PUBLIC_API_PATH.fullmatch(upstream_path):
-            self._send(404, b"not found\n", "text/plain", "no-store", False)
+        video_media = VIDEO_MEDIA_PATH.fullmatch(upstream_path)
+        if not video_media and not PUBLIC_API_PATH.fullmatch(upstream_path):
+            self._send(404, b"not found\n", "text/plain", "no-store", head_only)
+            return
+        if head_only and not video_media:
+            self._send(404, b"not found\n", "text/plain", "no-store", True)
             return
         if self.command == "POST" and upstream_path not in (
             "/v1/chat/completions", "/v1/images/generations", "/v1/images/edits", "/v1/videos"
         ):
+            self.close_connection = True
             self._send(405, b"method not allowed\n", "text/plain", "no-store", False)
             return
         try:
@@ -319,18 +345,40 @@ class Handler(BaseHTTPRequestHandler):
         if body is not None:
             headers["Content-Type"] = self.headers.get("Content-Type", "application/json")
         query = urlsplit(self.path).query
-        target = upstream_path + ("?" + query if query else "")
+        target = upstream_path + ("?" + query if query and not video_media else "")
+        if video_media:
+            for name in ("Range", "If-Range"):
+                if self.headers.get(name):
+                    headers[name] = self.headers[name]
         # Muse image/chat requests can run for several minutes; video polls
         # return sooner, but keep the relay timeout above upstream defaults.
         connection = http.client.HTTPConnection("127.0.0.1", API_PORT, timeout=660)
         started_response = False
         try:
-            connection.request(self.command, target, body=body, headers=headers)
+            # Older Muse installations expose GET but not HEAD for media.
+            connection.request("GET" if head_only else self.command, target, body=body, headers=headers)
             response = connection.getresponse()
+            content_type = response.getheader("Content-Type", "application/octet-stream")
+            if (self.command == "GET" and VIDEO_STATUS_PATH.fullmatch(upstream_path)
+                    and response.status == 200 and content_type.startswith("application/json")):
+                raw = response.read()
+                try:
+                    raw = json.dumps(_rewrite_video_links(json.loads(raw)), ensure_ascii=False).encode("utf-8")
+                except (ValueError, UnicodeError):
+                    pass
+                started_response = True
+                self._send(response.status, raw, content_type, "no-store", False)
+                return
             self.send_response(response.status)
-            self.send_header("Content-Type", response.getheader("Content-Type", "application/octet-stream"))
+            self.send_header("Content-Type", content_type)
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            if video_media:
+                for name in ("Accept-Ranges", "Content-Range", "ETag", "Last-Modified"):
+                    if response.getheader(name):
+                        self.send_header(name, response.getheader(name))
+                if response.status in (200, 206) and parse_qs(query).get("download") == ["1"]:
+                    self.send_header("Content-Disposition", f'attachment; filename="{video_media[1]}"')
             if response.getheader("Content-Length"):
                 self.send_header("Content-Length", response.getheader("Content-Length"))
             else:
@@ -338,12 +386,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.close_connection = True
             self.end_headers()
             started_response = True
-            while chunk := response.read(64 * 1024):
-                self.wfile.write(chunk)
+            if not head_only:
+                while chunk := response.read(64 * 1024):
+                    self.wfile.write(chunk)
         except (OSError, http.client.HTTPException) as exc:
             self.log_message("Muse API proxy error: %s", exc)
             if not started_response:
-                self._send(502, b"Muse API unavailable\n", "text/plain", "no-store", False)
+                self._send(502, b"Muse API unavailable\n", "text/plain", "no-store", head_only)
             self.close_connection = True
         finally:
             connection.close()

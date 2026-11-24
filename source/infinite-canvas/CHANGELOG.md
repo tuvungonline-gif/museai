@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- [修复] 修复移动设备上 IBEE 视频的播放与下载链接，并暂时隐藏 Agent 入口。
+
 - [调整] 首页以视频和图片生成入口替代画布介绍，保留 IBEE 品牌标识。
 
 - [调整] Áp dụng nhận diện IBEE, bảng màu Light Tech Blue, logo SVG và icon PWA cho giao diện Canvas và trang thành viên.

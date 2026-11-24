@@ -15,6 +15,7 @@ type RuntimeConfig = {
     MUSE_CHANNEL_NAME?: string; // 渠道显示名，默认 Muse
     AGENT_URL?: string; // 右侧 Agent 的默认服务地址，如 https://agent.example.com
     AGENT_TOKEN?: string; // 右侧 Agent 的默认 Connect token；会暴露给所有访客，慎用
+    SHOW_AGENT_CONTROLS?: boolean;
 };
 
 declare global {
@@ -39,6 +40,7 @@ export const MUSE_API_KEY = read("MUSE_API_KEY", import.meta.env.VITE_MUSE_API_K
 export const MUSE_CHANNEL_NAME = read("MUSE_CHANNEL_NAME", import.meta.env.VITE_MUSE_CHANNEL_NAME, "Muse");
 export const AGENT_URL = read("AGENT_URL", import.meta.env.VITE_AGENT_URL);
 export const AGENT_TOKEN = read("AGENT_TOKEN", import.meta.env.VITE_AGENT_TOKEN);
+export const SHOW_AGENT_CONTROLS = runtime.SHOW_AGENT_CONTROLS === true;
 
 // Only control settings visibility; server endpoints enforce account permissions.
 export const CAN_MANAGE_SETTINGS = runtime.MEMBERS_ENABLED !== true || runtime.MEMBER_ROLE === "admin";
