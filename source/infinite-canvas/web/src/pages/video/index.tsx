@@ -403,7 +403,7 @@ export default function VideoPage() {
                 ...stored,
                 id,
                 durationMs: Date.now() - log.createdAt,
-                requestedSeconds: Number(log.config.videoSeconds || log.seconds) || undefined,
+                requestedSeconds: modelOptionName(log.model).startsWith("muse-video") ? Number(log.config.videoSeconds || log.seconds) || undefined : undefined,
                 width: stored.width || 0,
                 height: stored.height || 0,
             };
