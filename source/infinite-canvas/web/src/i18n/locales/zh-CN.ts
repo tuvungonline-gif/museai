@@ -185,6 +185,9 @@ export default {
         addReference: "加入参考图",
     },
     videoWorkbench: {
+        museLongRequest: "IBEE 会请求 Muse 自行生成并拼接为一个视频。Muse 可能只返回约 10 秒片段，请检查实际时长。",
+        museShortResult: "请求 {{requested}} 秒，Muse 实际只返回 {{actual}} 秒。仍可播放和下载此片段，但 Muse 未拼接完整视频。",
+        actualLength: "视频实际时长：{{seconds}} 秒",
         title: "视频创作台",
         promptPlaceholder: "描述镜头运动、主体动作、场景氛围和画面风格",
         references: "参考图",

@@ -6,6 +6,8 @@ Bản cập nhật IBEE dùng logo ong SVG, giao diện Light Tech Blue và icon
 
 Để xem lại video đã báo quá thời gian, mở chính tên miền và trình duyệt dùng khi tạo video. Vào **Tạo Video → Lịch sử**, chọn dòng cũ và bấm **Kiểm tra lại tác vụ cũ**. IBEE dùng lại mã tác vụ đã lưu. Tệp có thể mở khi Muse đã hoàn tất và tệp vẫn còn trên máy chủ.
 
+Với yêu cầu Muse dài 20 hoặc 30 giây, IBEE gửi chỉ dẫn để Muse tự tạo các đoạn và ghép thành một tệp. Một yêu cầu chỉ trả một kết quả từ Muse; số giây nhập trong form không bảo đảm Muse sẽ xuất đúng thời lượng. Trình phát hiển thị số giây thực tế đọc từ tệp và cảnh báo nếu clip ngắn hơn; có thể tải clip ngắn đó. Việc Muse có tự ghép được hay không cần thử trực tiếp trên tài khoản Muse đang chạy.
+
 
 ## Bản cài của tuvungonline-gif
 

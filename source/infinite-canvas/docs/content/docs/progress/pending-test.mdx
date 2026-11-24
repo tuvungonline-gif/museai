@@ -7,6 +7,8 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Muse 的 20/30 秒请求：确认 Muse 是否根据明确的拼接提示真正返回单个完整视频。浏览器读取视频元数据后应展示实际时长；若仍只返回约 10 秒，应明确警告并保留播放、下载。不能把提示词视为已实现上游拼接。
+
 - IBEE Windows installer: from a new ZIP, update a running installation with a configured Canvas directory. The installer should verify the same build served on port 1521 and the public domain. Check a 30-second video in the original browser history after a brief connection interruption, and switch to a different history entry while the poll is active.
 
 - IBEE Video Studio: on the deployed Windows server, check an earlier timeout in History and confirm that the same task is queried. Check a 30-second request that returns after five minutes and verify that the player opens the result if Muse completes it.

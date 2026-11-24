@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- [修复] IBEE 请求 20/30 秒 Muse 视频时明确要求上游自行拼接，并在播放器展示实际时长与不足提示，不再把请求秒数当成视频实际时长。
+
 - [修复] IBEE 视频状态查询在暂时断线后继续跟踪已有任务，Windows 更新完成后校验实际提供的界面版本。
 
 - [Sửa] Trạm tạo video dùng chung giới hạn theo dõi với Canvas và cho phép kiểm tra lại tác vụ cũ khi trình duyệt chưa xác nhận được kết quả.
