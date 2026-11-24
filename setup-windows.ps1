@@ -85,4 +85,9 @@ if (-not (Test-Path -LiteralPath $envFile)) {
     }
     Write-Host 'Giu nguyen .env hien co. Xem CANVAS_ACCESS_PASSWORD trong file .env neu can dang nhap.'
 }
+$uiArchive = Join-Path $root 'account-ui.zip'
+if (Test-Path -LiteralPath $uiArchive) {
+    & $venvPython (Join-Path $root 'install_account_assets.py') --archive $uiArchive --root $root
+    if ($LASTEXITCODE -ne 0) { throw 'Cai goi giao dien IBEE that bai.' }
+}
 Write-Host 'Da cai xong. Mo http://127.0.0.1:1521/ sau khi hai cua so may chu khoi dong.'

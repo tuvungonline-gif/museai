@@ -1,5 +1,9 @@
 @echo off
 cd /d "%~dp0"
+if exist "%~dp0account-ui.zip" (
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0wait-for-services.ps1" -Quick
+  if not errorlevel 1 goto update_running
+)
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup-windows.ps1"
 if errorlevel 1 (
   echo Cai dat that bai. Xem loi o phia tren.
@@ -22,3 +26,7 @@ start "" "http://127.0.0.1:1521/"
 echo Muse Canvas: http://127.0.0.1:1521/
 echo Giu hai cua so Muse API va Muse Canvas dang mo trong luc su dung.
 pause
+exit /b 0
+:update_running
+call "%~dp0CAP-NHAT-IBEE.cmd"
+exit /b %errorlevel%

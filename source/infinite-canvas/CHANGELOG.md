@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- [修复] IBEE 视频状态查询在暂时断线后继续跟踪已有任务，Windows 更新完成后校验实际提供的界面版本。
+
 - [Sửa] Trạm tạo video dùng chung giới hạn theo dõi với Canvas và cho phép kiểm tra lại tác vụ cũ khi trình duyệt chưa xác nhận được kết quả.
 
 - [优化] Muse 视频请求不再重复上传参考图，成品可直接播放，后台保存本地副本。

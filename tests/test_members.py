@@ -18,7 +18,7 @@ spec.loader.exec_module(canvas)
 class MembersTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         (self.root / 'index.html').write_text('<body>Canvas</body>')
         canvas.ROOT, canvas.MEMBERS_ENABLED, canvas.PUBLIC_CANVAS = self.root, True, True
         canvas.API_KEY = 'must-stay-private'
