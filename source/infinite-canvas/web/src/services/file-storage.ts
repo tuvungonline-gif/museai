@@ -38,6 +38,18 @@ export async function resolveMediaUrl(storageKey?: string, fallback = "") {
     return url;
 }
 
+/** Archive a streamed Muse result without making playback wait for the full video. */
+export async function cacheMuseVideo(storageKey: string, relayPath: string, signal: AbortSignal) {
+    const response = await fetch(relayPath, { signal, priority: "low" });
+    if (!response.ok || !response.headers.get("Content-Type")?.startsWith("video/")) {
+        throw new Error(`Video archive request failed (${response.status})`);
+    }
+    const blob = await response.blob();
+    signal.throwIfAborted();
+    await store.setItem(storageKey, blob);
+    if (signal.aborted) await store.removeItem(storageKey);
+}
+
 export async function getMediaBlob(storageKey: string) {
     return store.getItem<Blob>(storageKey);
 }

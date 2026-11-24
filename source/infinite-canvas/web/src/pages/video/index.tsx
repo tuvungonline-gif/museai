@@ -14,7 +14,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { clampVideoSeconds } from "@/lib/media-size";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { museVideoRelayPath } from "@/lib/muse-video-url";
-import { deleteStoredMedia, resolveMediaUrl } from "@/services/file-storage";
+import { cacheMuseVideo, deleteStoredMedia, resolveMediaUrl } from "@/services/file-storage";
 import { resolveImageUrl, ensureImagePreview, getImagePreviewRevision, previewUrlFor, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
 import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, type VideoGenerationTask } from "@/services/api/video";
 import { useAssetStore } from "@/stores/use-asset-store";
@@ -38,6 +38,7 @@ type GeneratedVideo = {
 type GenerationResult = {
     id: string;
     status: "pending" | "success" | "failed";
+    phase?: "queued" | "processing";
     video?: GeneratedVideo;
     error?: string;
 };
@@ -75,6 +76,7 @@ export default function VideoPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dragDepthRef = useRef(0);
     const activeLogIdsRef = useRef<Set<string>>(new Set());
+    const archiveControllers = useRef(new Map<string, AbortController>());
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
     const updateConfig = useConfigStore((state) => state.updateConfig);
@@ -187,6 +189,7 @@ export default function VideoPage() {
         try {
             const task = await createVideoGenerationTask(snapshot.config, snapshot.text, snapshot.references);
             const log = buildLog({ prompt: snapshot.text, model, config: snapshot.config, references: snapshot.references, durationMs: 0, status: "pending", task });
+            setResults([{ id: log.id, status: "pending" }]);
             await saveLog(log, false);
             void pollGenerationLog(log, snapshot.config, agentTaskId);
         } catch (error) {
@@ -277,6 +280,7 @@ export default function VideoPage() {
     };
 
     const deleteSelectedLogs = () => {
+        for (const id of selectedLogIds) archiveControllers.current.get(id)?.abort();
         const mediaKeys = logs
             .filter((log) => selectedLogIds.includes(log.id))
             .map((log) => log.video?.storageKey)
@@ -319,24 +323,48 @@ export default function VideoPage() {
             for (let attempt = 0; attempt < 120; attempt += 1) {
                 const state = await pollVideoGenerationTask(configOverride || taskConfig, log.task);
                 if (state.status === "completed") {
-                    const stored = await storeGeneratedVideo(state.result);
+                    const id = nanoid();
+                    const relayPath = state.result.url ? museVideoRelayPath(state.result.url) : undefined;
+                    const stored = relayPath ? {
+                        url: relayPath,
+                        storageKey: `video:${id}`,
+                        width: 0,
+                        height: 0,
+                        bytes: state.result.bytes || 0,
+                        mimeType: relayPath.endsWith(".webm") ? "video/webm" : relayPath.endsWith(".mov") ? "video/quicktime" : "video/mp4",
+                    } : await storeGeneratedVideo(state.result);
                     const nextVideo: GeneratedVideo = {
-                        id: nanoid(),
-                        url: stored.url,
-                        storageKey: stored.storageKey,
+                        ...stored,
+                        id,
                         durationMs: Date.now() - log.createdAt,
-                        width: stored.width || 1280,
-                        height: stored.height || 720,
-                        bytes: stored.bytes,
-                        mimeType: stored.mimeType,
+                        width: stored.width || 0,
+                        height: stored.height || 0,
                     };
                     setResults([{ id: nextVideo.id, status: "success", video: nextVideo }]);
                     if (agentTaskId) updateAgentTask(agentTaskId, { status: "succeeded", successCount: 1, failCount: 0, error: undefined });
-                    await saveLog({ ...log, status: "success", durationMs: nextVideo.durationMs, video: nextVideo, error: undefined });
+                    const archive = relayPath ? new AbortController() : undefined;
+                    if (archive) archiveControllers.current.set(log.id, archive);
+                    try {
+                        await saveLog({ ...log, status: "success", durationMs: nextVideo.durationMs, video: nextVideo, error: undefined });
+                    } catch {
+                        archiveControllers.current.delete(log.id);
+                        message.warning(t("videoWorkbench.historySaveFailed"));
+                        return;
+                    }
+                    if (relayPath && archive) {
+                        void cacheMuseVideo(nextVideo.storageKey, relayPath, archive.signal)
+                            .catch(() => { /* The logged relay URL remains playable if local storage is unavailable. */ })
+                            .finally(() => archiveControllers.current.delete(log.id));
+                    }
                     message.success(t("videoWorkbench.generated"));
                     return;
                 }
                 if (state.status === "failed") throw new Error(state.error);
+                if (state.phase) {
+                    setResults((items) => items.map((item) =>
+                        item.id === log.id && item.status === "pending" && item.phase !== state.phase ? { ...item, phase: state.phase } : item,
+                    ));
+                }
                 if (attempt === 119) throw new Error(t("videoWorkbench.timeout"));
                 await delay(2500);
             }
@@ -368,6 +396,15 @@ export default function VideoPage() {
         if (log.config.videoWatermark) updateConfig("videoWatermark", log.config.videoWatermark);
         if (log.config.videoMode) updateConfig("videoMode", log.config.videoMode);
         setResults(log.status === "pending" ? [{ id: log.id, status: "pending" }] : log.video ? [{ id: log.video.id, status: "success", video: log.video }] : [{ id: log.id, status: "failed", error: log.error || t("workbench.generationFailed") }]);
+        const video = log.video;
+        if (video && museVideoRelayPath(video.url)) {
+            void resolveMediaUrl(video.storageKey, video.url).then((url) => {
+                if (url === video.url) return;
+                setResults((items) => items.map((item) =>
+                    item.video?.id === video.id ? { ...item, video: { ...video, url } } : item,
+                ));
+            }).catch(() => { /* Keep the playable server link if local storage is unavailable. */ });
+        }
     };
 
     return (
@@ -471,7 +508,7 @@ export default function VideoPage() {
                         </div>
                         {results.length ? (
                             <div className="grid gap-4">
-                                {results.map((result) => (result.status === "success" && result.video ? <ResultVideoCard key={result.id} video={result.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} /> : result.status === "failed" ? <FailedVideoCard key={result.id} error={result.error || t("workbench.generationFailed")} onRetry={retryResult} /> : <PendingVideoCard key={result.id} />))}
+                                {results.map((result) => (result.status === "success" && result.video ? <ResultVideoCard key={result.id} video={result.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} /> : result.status === "failed" ? <FailedVideoCard key={result.id} error={result.error || t("workbench.generationFailed")} onRetry={retryResult} /> : <PendingVideoCard key={result.id} phase={result.phase} />))}
                             </div>
                         ) : (
                             <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 text-center dark:border-stone-700 lg:min-h-[560px]">
@@ -530,19 +567,19 @@ function GenerationSettings({ config, model, updateConfig, openConfigDialog }: {
 function ResultVideoCard({ video, onDownload, onSaveAsset }: { video: GeneratedVideo; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void }) {
     const { t } = useTranslation();
     const relayPath = museVideoRelayPath(video.url);
+    const [dimensions, setDimensions] = useState({ width: video.width, height: video.height });
     return (
         <div className="overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
-            <video src={relayPath || video.url} controls playsInline preload="metadata" className="aspect-video w-full bg-black object-contain" />
+            <video src={relayPath || video.url} controls playsInline preload="metadata" className="aspect-video w-full bg-black object-contain"
+                onLoadedMetadata={({ currentTarget }) => setDimensions({ width: currentTarget.videoWidth, height: currentTarget.videoHeight })} />
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-stone-200 px-3 py-2.5 dark:border-stone-800">
                 <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
-                    <span>
-                        {video.width}x{video.height}
-                    </span>
-                    <span>{formatBytes(video.bytes)}</span>
+                    {dimensions.width > 0 && dimensions.height > 0 ? <span>{dimensions.width}x{dimensions.height}</span> : null}
+                    {video.bytes > 0 ? <span>{formatBytes(video.bytes)}</span> : null}
                     <span>{formatDuration(video.durationMs)}</span>
                 </div>
                 <div className="flex shrink-0 gap-1">
-                    <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
+                    <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset({ ...video, ...dimensions })}>
                         {t("common.addToAssets")}
                     </Button>
                     <Button size="small" icon={<Download className="size-3.5" />} href={relayPath ? `${relayPath}?download=1` : undefined} onClick={relayPath ? undefined : () => onDownload(video)}>
@@ -554,13 +591,13 @@ function ResultVideoCard({ video, onDownload, onSaveAsset }: { video: GeneratedV
     );
 }
 
-function PendingVideoCard() {
+function PendingVideoCard({ phase }: { phase?: GenerationResult["phase"] }) {
     const { t } = useTranslation();
     return (
         <div className="relative aspect-video overflow-hidden rounded-lg border border-dashed border-stone-300 bg-stone-50 dark:border-stone-700 dark:bg-stone-900">
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-stone-500 dark:text-stone-400">
                 <LoaderCircle className="size-6 animate-spin" />
-                <span>{t("workbench.generating")}</span>
+                <span role="status">{t(phase === "queued" ? "videoWorkbench.queued" : phase === "processing" ? "videoWorkbench.processing" : "workbench.generating")}</span>
             </div>
         </div>
     );
@@ -706,7 +743,7 @@ function serializeLog(log: GenerationLog): GenerationLog {
     return {
         ...log,
         references: log.references.map((item) => ({ ...item, dataUrl: item.storageKey ? "" : item.dataUrl })),
-        video: log.video?.storageKey ? { ...log.video, url: "" } : log.video,
+        video: log.video?.storageKey && log.video.url.startsWith("blob:") ? { ...log.video, url: "" } : log.video,
     };
 }
 
