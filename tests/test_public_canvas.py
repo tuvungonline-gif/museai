@@ -61,7 +61,7 @@ class FakeMuse(BaseHTTPRequestHandler):
 class PublicCanvasTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        canvas.ROOT = Path(self.temp.name)
+        canvas.ROOT = Path(self.temp.name).resolve()
         (canvas.ROOT / "index.html").write_text("<h1>Muse</h1>")
         canvas.PUBLIC_CANVAS = True
         canvas.ACCESS_PASSWORD = "owner-password"

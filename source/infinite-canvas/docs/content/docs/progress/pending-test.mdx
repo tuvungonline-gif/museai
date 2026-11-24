@@ -7,6 +7,8 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- IBEE Windows installer: from a new ZIP, update a running installation with a configured Canvas directory. The installer should verify the same build served on port 1521 and the public domain. Check a 30-second video in the original browser history after a brief connection interruption, and switch to a different history entry while the poll is active.
+
 - IBEE Video Studio: on the deployed Windows server, check an earlier timeout in History and confirm that the same task is queried. Check a 30-second request that returns after five minutes and verify that the player opens the result if Muse completes it.
 
 - IBEE Video Studio: create a Muse video from reference images and confirm that the interface distinguishes waiting in the queue from processing. When the result is ready, the player should render independently of the local archive, and History should reopen the result with the server URL as a fallback.

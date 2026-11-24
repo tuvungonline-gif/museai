@@ -29,7 +29,7 @@ type GeminiVideoOperation = {
     error?: { message?: string };
     response?: { generateVideoResponse?: { generatedSamples?: Array<{ video?: { uri?: string } }> } };
 };
-export type VideoTaskPhase = "queued" | "processing";
+export type VideoTaskPhase = "queued" | "processing" | "reconnecting";
 export type VideoGenerationTaskState = { status: "pending"; phase?: VideoTaskPhase } | { status: "completed"; result: VideoGenerationResult } | { status: "failed"; error: string };
 
 /** Results for scripted (plugin) video models, which run their own create+poll in one shot at task creation. */
@@ -59,10 +59,10 @@ export async function waitForVideoGenerationTask(config: AiConfig, task: VideoGe
         if (state.status === "completed") return state.result;
         if (state.status === "failed") throw videoTaskFailed(state.error);
         options?.onPending?.(state.phase);
-        if (attempt === maxAttempts - 1) throw new Error(apiText("videoTimeout", { provider: "" }));
+        if (attempt === maxAttempts - 1) break;
         await delay(2500, options?.signal);
     }
-    throw new Error(apiText("videoTimeout", { provider: "" }));
+    throw new Error(i18n.t("videoWorkbench.trackingPaused"));
 }
 
 export function isVideoTaskFailed(error: unknown) {
@@ -200,8 +200,13 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
 }
 
 async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
+    const relay = isMuseRelayBase(config.baseUrl);
+    let receivedStatus = false;
     try {
-        const video = unwrapVideoResponse((await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${task.id}`), { headers: aiHeaders(config), signal: options?.signal })).data);
+        const response = await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${task.id}`), { headers: aiHeaders(config), signal: options?.signal });
+        receivedStatus = true;
+        const video = unwrapVideoResponse(response.data);
+        if (typeof video !== "object") throw new Error(apiText("videoTaskQueryFailed"));
         if (video.status === "failed" || video.status === "cancelled" || video.status === "canceled") {
             return { status: "failed", error: readApiErrorMessage(video.error) || apiText("videoGenerationFailed") };
         }
@@ -212,9 +217,18 @@ async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, 
             await assertVideoBlob(content.data);
             return { status: "completed", result: { blob: content.data } };
         }
-        const phase = isMuseRelayBase(config.baseUrl) && (video.status === "queued" || video.status === "processing") ? video.status : undefined;
+        const phase = relay && (video.status === "queued" || video.status === "processing") ? video.status : undefined;
         return { status: "pending", phase };
     } catch (error) {
+        if (relay && !receivedStatus && !options?.signal?.aborted && axios.isAxiosError(error) && !axios.isCancel(error)) {
+            const status = error.response?.status;
+            if (status === 404) return { status: "failed", error: i18n.t("videoWorkbench.taskMissing") };
+            if (status === 401 || status === 403) throw new Error(i18n.t("videoWorkbench.sessionExpired"));
+            const networkError = !status && ["ERR_NETWORK", "ECONNABORTED", "ETIMEDOUT"].includes(error.code || "");
+            if (networkError || status === 408 || (status && status >= 500)) {
+                return { status: "pending", phase: "reconnecting" };
+            }
+        }
         throw new Error(readAxiosError(error, apiText("videoTaskQueryFailed")));
     }
 }
@@ -444,14 +458,14 @@ function delay(ms: number, signal?: AbortSignal) {
             reject(new DOMException("Aborted", "AbortError"));
             return;
         }
-        const timer = setTimeout(resolve, ms);
-        signal?.addEventListener(
-            "abort",
-            () => {
-                clearTimeout(timer);
-                reject(new DOMException("Aborted", "AbortError"));
-            },
-            { once: true },
-        );
+        const abort = () => {
+            clearTimeout(timer);
+            reject(new DOMException("Aborted", "AbortError"));
+        };
+        const timer = setTimeout(() => {
+            signal?.removeEventListener("abort", abort);
+            resolve();
+        }, ms);
+        signal?.addEventListener("abort", abort, { once: true });
     });
 }
