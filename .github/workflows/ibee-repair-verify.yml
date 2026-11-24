@@ -1,0 +1,29 @@
+name: Verify IBEE Windows update
+on:
+  push:
+    branches: [codex/ibee-video-repair-test]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Parse updater with Windows PowerShell
+        shell: powershell
+        run: |
+          foreach ($name in @('install-members-windows.ps1','run-canvas-windows.ps1','setup-windows.ps1')) {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD $name), [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors) { throw ($parseErrors | Out-String) }
+          }
+      - name: Test routes and validate the archive
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python install_account_assets.py --archive account-ui.zip --root . --check
