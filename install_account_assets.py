@@ -1,13 +1,25 @@
 """Validate and install the prebuilt account UI, switching index.html last."""
 import argparse
+import hashlib
+import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
 import zipfile
 
 
+def canvas_dist(root):
+    root = Path(root).resolve()
+    configured = os.environ.get('CANVAS_ROOT', '')
+    env = root / '.env'
+    if env.is_file():
+        for line in env.read_text(encoding='utf-8-sig').splitlines():
+            if line.startswith('CANVAS_ROOT='):
+                configured = line.split('=', 1)[1]
+    return (root / configured).resolve() if configured else root / 'canvas' / 'dist'
+
+
 def install(archive, root, backup=None, check=False):
-    dist = Path(root) / 'canvas' / 'dist'
     with zipfile.ZipFile(archive) as z:
         names = z.namelist()
         for name in names:
@@ -16,16 +28,18 @@ def install(archive, root, backup=None, check=False):
                 raise ValueError('Duong dan tep giao dien khong hop le.')
         if z.testzip() is not None:
             raise ValueError('Goi giao dien bi hong.')
-        html = z.read('index.html').decode('utf-8')
+        index = z.read('index.html')
+        html = index.decode('utf-8')
         if 'data-muse-account-ui="1"' not in html:
             raise ValueError('Goi giao dien khong dung phien ban.')
         assets = re.findall(r'(?:src|href)="/(assets/[^"?]+|prompt-library-reset-v1\.js)"', html)
         if not assets or any(name not in names for name in assets):
             raise ValueError('Thieu tai nguyen giao dien.')
         if check:
-            print('Goi giao dien hop le.')
+            print(hashlib.sha256(index).hexdigest())
             return
-        if backup:
+        dist = canvas_dist(root)
+        if backup and (dist / 'index.html').is_file():
             Path(backup).mkdir(parents=True, exist_ok=True)
             shutil.copy2(dist / 'index.html', Path(backup) / 'canvas-index.html')
         for name in names:
@@ -35,7 +49,7 @@ def install(archive, root, backup=None, check=False):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(z.read(name))
         temp = dist / 'index.html.account-new'
-        temp.write_text(html, encoding='utf-8')
+        temp.write_bytes(index)
         temp.replace(dist / 'index.html')
         print('Da cai giao dien Quan ly tai khoan.')
 

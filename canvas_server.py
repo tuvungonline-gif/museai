@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import base64
+import hashlib
 import hmac
 import http.client
 import mimetypes
@@ -214,6 +215,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def _serve(self, head_only: bool) -> None:
         path = unquote(urlsplit(self.path).path)
+        if path == "/ibee-build.json" and self.command in ("GET", "HEAD"):
+            try:
+                index = (ROOT / "index.html").read_bytes()
+            except OSError:
+                self._send(503, b'{"index_sha256":null}', "application/json", "no-store", head_only)
+                return
+            body = json.dumps({"index_sha256": hashlib.sha256(index).hexdigest()}).encode("utf-8")
+            self._send(200, body, "application/json", "no-store", head_only)
+            return
         if MEMBERS_ENABLED:
             if MEMBER_STORE is None:
                 self._send(503, b"Member service unavailable", "text/plain", "no-store", head_only)
@@ -288,6 +298,9 @@ class Handler(BaseHTTPRequestHandler):
             if candidate.is_dir():
                 candidate = candidate / "index.html"
             if not candidate.is_file():
+                if path.startswith("/assets/"):
+                    self._send(404, b"asset not found\n", "text/plain", "no-store", head_only)
+                    return
                 # SPA 回退：/canvas/xxx、/image 等前端路由都交给 index.html
                 candidate = ROOT / "index.html"
             if not candidate.is_file():
@@ -303,8 +316,11 @@ class Handler(BaseHTTPRequestHandler):
                 "application/javascript", "application/json", "application/manifest+json",
             ):
                 content_type += "; charset=utf-8"
-            immutable = path.startswith("/assets/")
-            cache = "public, max-age=31536000, immutable" if immutable else "no-cache"
+            cache = "no-cache"
+            if candidate == ROOT / "index.html":
+                cache = "no-store"
+            elif path.startswith("/assets/") and ROOT / "assets" in candidate.parents:
+                cache = "public, max-age=31536000, immutable"
             self._send(200, body, content_type, cache, head_only)
         except (BrokenPipeError, ConnectionResetError):
             pass

@@ -1,3 +1,4 @@
+import hashlib
 import http.client
 import importlib.util
 import json
@@ -105,6 +106,28 @@ class PublicCanvasTest(unittest.TestCase):
             ("GET", "/v1/models", "Bearer private-api-key"),
             ("POST", "/v1/images/generations", "Bearer private-api-key"),
         ])
+
+    def test_build_probe_and_cache_follow_the_served_assets(self):
+        index = canvas.ROOT / "index.html"
+        assets = canvas.ROOT / "assets"
+        assets.mkdir()
+        (assets / "index-example.js").write_text("export {}")
+        for contents in (b"<h1>old</h1>", b"<h1>updated</h1>"):
+            index.write_bytes(contents)
+            status, headers, data = self.fetch("GET", "/ibee-build.json?v=verify")
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(data), {"index_sha256": hashlib.sha256(contents).hexdigest()})
+            self.assertEqual(headers["Cache-Control"], "no-store")
+            status, headers, data = self.fetch("GET", "/video")
+            self.assertEqual((status, data), (200, contents))
+            self.assertEqual(headers["Cache-Control"], "no-store")
+
+        status, headers, _ = self.fetch("GET", "/assets/index-example.js")
+        self.assertEqual(status, 200)
+        self.assertIn("immutable", headers["Cache-Control"])
+        status, headers, _ = self.fetch("GET", "/assets/missing.js")
+        self.assertEqual(status, 404)
+        self.assertEqual(headers["Cache-Control"], "no-store")
 
     def test_admin_and_other_paths_are_not_proxied(self):
         self.assertEqual(self.request("GET", "/employee-api/admin/accounts")[0], 404)

@@ -2,7 +2,9 @@
 
 ## Giao diện IBEE
 
-Bản cập nhật IBEE dùng logo ong SVG lấy cảm hứng từ hình nhận diện được cung cấp, giao diện Light Tech Blue và icon PWA đồng bộ. Từ ZIP mới nhất của repo, giải nén, bấm đúp `CAP-NHAT-IBEE.cmd`. Bộ cài tự tìm thư mục Canvas đang nghe cổng 1521, sao lưu tệp trước khi thay, giữ dữ liệu thành viên, `.env`, phiên Muse và các website khác. Sau khi cài, mở `https://ms.ibeetool.com/`, tải lại bằng Ctrl+F5. Nếu cổng 1521 đang tắt, chỉ thư mục Muse đang có `.env` và chạy file trong ZIP mới. Phần icon màn hình chính cần kiểm tra riêng trên thiết bị thực; manifest không tự thêm tính năng offline.
+Bản cập nhật IBEE dùng logo ong SVG, giao diện Light Tech Blue và icon PWA đồng bộ. Giải nén toàn bộ ZIP mới nhất của repo vào thư mục mới, rồi bấm đúp `CAP-NHAT-IBEE.cmd` trên máy chạy Canvas. Bộ cài tìm thư mục của Canvas đang nghe cổng 1521, sao lưu và cập nhật giao diện cùng máy chủ Canvas. Dữ liệu thành viên, `.env`, phiên Muse và tiến trình Muse API được giữ nguyên. Sau khi khởi động lại Canvas, bộ cài đối chiếu mã giao diện thực tế tại cổng 1521 và tại `https://ms.ibeetool.com/ibee-build.json`. Nếu cổng 1521 đang tắt, bộ cài yêu cầu đường dẫn thư mục Muse hiện tại có `.env`.
+
+Để xem lại video đã báo quá thời gian, mở chính tên miền và trình duyệt dùng khi tạo video. Vào **Tạo Video → Lịch sử**, chọn dòng cũ và bấm **Kiểm tra lại tác vụ cũ**. IBEE dùng lại mã tác vụ đã lưu. Tệp có thể mở khi Muse đã hoàn tất và tệp vẫn còn trên máy chủ.
 
 
 ## Bản cài của tuvungonline-gif
