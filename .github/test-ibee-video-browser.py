@@ -108,7 +108,7 @@ with tempfile.TemporaryDirectory() as directory, ZipFile("account-ui.zip") as bu
         print("PASS: old task recovered after HTTP 502 and network interruption, 146 queries and playable MP4")
 
         page.set_viewport_size({"width":390, "height":844})
-        page.get_by_role("button", name="Lịch sử", exact=True).click()
+        page.get_by_role("button", name="Lịch sử tạo", exact=True).click()
         page.get_by_role("button", name=re.compile("Video phiên hết hạn")).click()
         check.click()
         expect(page.get_by_text("Phiên đăng nhập IBEE đã hết hạn. Đăng nhập lại rồi kiểm tra tác vụ cũ.")).to_be_visible()
