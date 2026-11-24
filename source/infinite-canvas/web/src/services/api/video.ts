@@ -161,8 +161,9 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
     const ratio = inferVideoRatio(config.size || "16:9");
     const body = new FormData();
     body.append("model", modelOptionName(model));
-    body.append("prompt", prompt);
-    body.append("seconds", normalizeVideoSeconds(config.videoSeconds));
+    const seconds = normalizeVideoSeconds(config.videoSeconds);
+    body.append("prompt", museVideoPrompt(model, prompt, seconds));
+    body.append("seconds", seconds);
     body.append("size", normalizeVideoSize(config.size, config.vquality) || "1280x720");
     if (ratio && ratio !== "auto") {
         body.append("ratio", ratio);
@@ -197,6 +198,16 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("videoTaskCreateFailed")));
     }
+}
+
+// Muse's web flow reads the requested duration from the prompt, but normally
+// returns one short clip. Ask it to assemble the full result itself when the
+// user requests more than one clip; do not claim that the request guarantees it.
+export function museVideoPrompt(model: string, prompt: string, seconds: string): string {
+    const duration = Number(seconds);
+    if (!modelOptionName(model).startsWith("muse-video") || !Number.isFinite(duration) || duration <= 10) return prompt;
+    const clips = Math.ceil(duration / 10);
+    return `${prompt}\n\nYêu cầu đầu ra: một tệp video duy nhất dài ${duration} giây. Nếu mỗi lần chỉ tạo được khoảng 10 giây, hãy tự tạo ${clips} đoạn liên tiếp, nối các đoạn theo đúng thứ tự và chỉ xuất video hoàn chỉnh sau khi ghép. Giữ nhân vật, bối cảnh và âm thanh nhất quán; không trả một đoạn 10 giây thay cho toàn bộ video.`;
 }
 
 async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {

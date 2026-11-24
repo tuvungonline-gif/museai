@@ -19,7 +19,7 @@ import { resolveImageUrl, ensureImagePreview, getImagePreviewRevision, previewUr
 import { createVideoGenerationTask, isVideoTaskFailed, storeGeneratedVideo, waitForVideoGenerationTask, type VideoGenerationTask, type VideoTaskPhase } from "@/services/api/video";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
-import { boolConfig, modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { boolConfig, modelOptionLabel, modelOptionName, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { ReferenceImage } from "@/types/image";
 import i18n from "@/i18n";
@@ -33,6 +33,7 @@ type GeneratedVideo = {
     height: number;
     bytes: number;
     mimeType: string;
+    requestedSeconds?: number;
 };
 
 type GenerationStatus = "pending" | "success" | "failed" | "unconfirmed";
@@ -402,6 +403,7 @@ export default function VideoPage() {
                 ...stored,
                 id,
                 durationMs: Date.now() - log.createdAt,
+                requestedSeconds: modelOptionName(log.model).startsWith("muse-video") ? Number(log.config.videoSeconds || log.seconds) || undefined : undefined,
                 width: stored.width || 0,
                 height: stored.height || 0,
             };
@@ -628,6 +630,8 @@ function GenerationSettings({ config, model, updateConfig, openConfigDialog }: {
             </label>
             <div className="col-span-2">
                 <VideoSettingsPanel config={config} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} showTitle={false} className="space-y-4" />
+                {modelOptionName(model).startsWith("muse-video") && Number(config.videoSeconds) > 10 ?
+                    <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">{t("videoWorkbench.museLongRequest")}</p> : null}
             </div>
         </>
     );
@@ -637,14 +641,23 @@ function ResultVideoCard({ video, onDownload, onSaveAsset }: { video: GeneratedV
     const { t } = useTranslation();
     const relayPath = museVideoRelayPath(video.url);
     const [dimensions, setDimensions] = useState({ width: video.width, height: video.height });
+    const [actualSeconds, setActualSeconds] = useState<number | null>(null);
+    const shortfall = actualSeconds !== null && !!video.requestedSeconds && actualSeconds < video.requestedSeconds - 1.5;
     return (
         <div className="overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
             <video src={relayPath || video.url} controls playsInline preload="metadata" className="aspect-video w-full bg-black object-contain"
-                onLoadedMetadata={({ currentTarget }) => setDimensions({ width: currentTarget.videoWidth, height: currentTarget.videoHeight })} />
+                onLoadedMetadata={({ currentTarget }) => {
+                    setDimensions({ width: currentTarget.videoWidth, height: currentTarget.videoHeight });
+                    setActualSeconds(Number.isFinite(currentTarget.duration) && currentTarget.duration > 0 ? Math.round(currentTarget.duration * 10) / 10 : null);
+                }} />
+            {shortfall ? <p role="status" className="border-t border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+                {t("videoWorkbench.museShortResult", { requested: video.requestedSeconds, actual: actualSeconds })}
+            </p> : null}
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-stone-200 px-3 py-2.5 dark:border-stone-800">
                 <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
                     {dimensions.width > 0 && dimensions.height > 0 ? <span>{dimensions.width}x{dimensions.height}</span> : null}
                     {video.bytes > 0 ? <span>{formatBytes(video.bytes)}</span> : null}
+                    {actualSeconds !== null ? <span>{t("videoWorkbench.actualLength", { seconds: actualSeconds })}</span> : null}
                     <span>{formatDuration(video.durationMs)}</span>
                 </div>
                 <div className="flex shrink-0 gap-1">
