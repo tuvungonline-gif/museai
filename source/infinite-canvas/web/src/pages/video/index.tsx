@@ -16,7 +16,7 @@ import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { museVideoRelayPath } from "@/lib/muse-video-url";
 import { cacheMuseVideo, deleteStoredMedia, resolveMediaUrl } from "@/services/file-storage";
 import { resolveImageUrl, ensureImagePreview, getImagePreviewRevision, previewUrlFor, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
-import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, type VideoGenerationTask } from "@/services/api/video";
+import { createVideoGenerationTask, isVideoTaskFailed, storeGeneratedVideo, waitForVideoGenerationTask, type VideoGenerationTask, type VideoTaskPhase } from "@/services/api/video";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
 import { boolConfig, modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
@@ -35,10 +35,12 @@ type GeneratedVideo = {
     mimeType: string;
 };
 
+type GenerationStatus = "pending" | "success" | "failed" | "unconfirmed";
+
 type GenerationResult = {
     id: string;
-    status: "pending" | "success" | "failed";
-    phase?: "queued" | "processing";
+    status: GenerationStatus;
+    phase?: VideoTaskPhase;
     video?: GeneratedVideo;
     error?: string;
 };
@@ -56,10 +58,11 @@ type GenerationLog = {
     size: string;
     resolution: string;
     seconds: string;
-    status: "pending" | "success" | "failed";
+    status: GenerationStatus;
     task?: VideoGenerationTask;
     video?: GeneratedVideo;
     error?: string;
+    serverFailed?: boolean;
 };
 
 type GenerationLogConfig = Pick<AiConfig, "model" | "videoModel" | "size" | "vquality" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoMode">;
@@ -312,6 +315,13 @@ export default function VideoPage() {
         }
     };
 
+    const checkExistingVideo = (id: string) => {
+        const log = logs.find((item) => item.id === id);
+        if (!log?.task || running || activeLogIdsRef.current.has(id)) return;
+        setResults([{ id, status: "pending" }]);
+        void pollGenerationLog(log);
+    };
+
     const pollGenerationLog = async (log: GenerationLog, configOverride?: AiConfig, agentTaskId?: string) => {
         if (!log.task || activeLogIdsRef.current.has(log.id)) return;
         activeLogIdsRef.current.add(log.id);
@@ -320,60 +330,57 @@ export default function VideoPage() {
         setResults((value) => (value.length ? value : [{ id: log.id, status: "pending" }]));
         const taskConfig = buildVideoConfig({ ...effectiveConfig, ...log.config }, log.task.model || log.model);
         try {
-            for (let attempt = 0; attempt < 120; attempt += 1) {
-                const state = await pollVideoGenerationTask(configOverride || taskConfig, log.task);
-                if (state.status === "completed") {
-                    const id = nanoid();
-                    const relayPath = state.result.url ? museVideoRelayPath(state.result.url) : undefined;
-                    const stored = relayPath ? {
-                        url: relayPath,
-                        storageKey: `video:${id}`,
-                        width: 0,
-                        height: 0,
-                        bytes: state.result.bytes || 0,
-                        mimeType: relayPath.endsWith(".webm") ? "video/webm" : relayPath.endsWith(".mov") ? "video/quicktime" : "video/mp4",
-                    } : await storeGeneratedVideo(state.result);
-                    const nextVideo: GeneratedVideo = {
-                        ...stored,
-                        id,
-                        durationMs: Date.now() - log.createdAt,
-                        width: stored.width || 0,
-                        height: stored.height || 0,
-                    };
-                    setResults([{ id: nextVideo.id, status: "success", video: nextVideo }]);
-                    if (agentTaskId) updateAgentTask(agentTaskId, { status: "succeeded", successCount: 1, failCount: 0, error: undefined });
-                    const archive = relayPath ? new AbortController() : undefined;
-                    if (archive) archiveControllers.current.set(log.id, archive);
-                    try {
-                        await saveLog({ ...log, status: "success", durationMs: nextVideo.durationMs, video: nextVideo, error: undefined });
-                    } catch {
-                        archiveControllers.current.delete(log.id);
-                        message.warning(t("videoWorkbench.historySaveFailed"));
-                        return;
-                    }
-                    if (relayPath && archive) {
-                        void cacheMuseVideo(nextVideo.storageKey, relayPath, archive.signal)
-                            .catch(() => { /* The logged relay URL remains playable if local storage is unavailable. */ })
-                            .finally(() => archiveControllers.current.delete(log.id));
-                    }
-                    message.success(t("videoWorkbench.generated"));
-                    return;
-                }
-                if (state.status === "failed") throw new Error(state.error);
-                if (state.phase) {
+            const result = await waitForVideoGenerationTask(configOverride || taskConfig, log.task, {
+                onPending: (phase) => {
+                    if (!phase) return;
                     setResults((items) => items.map((item) =>
-                        item.id === log.id && item.status === "pending" && item.phase !== state.phase ? { ...item, phase: state.phase } : item,
+                        item.id === log.id && item.status === "pending" && item.phase !== phase ? { ...item, phase } : item,
                     ));
-                }
-                if (attempt === 119) throw new Error(t("videoWorkbench.timeout"));
-                await delay(2500);
+                },
+            });
+            const id = nanoid();
+            const relayPath = result.url ? museVideoRelayPath(result.url) : undefined;
+            const stored = relayPath ? {
+                url: relayPath,
+                storageKey: `video:${id}`,
+                width: 0,
+                height: 0,
+                bytes: result.bytes || 0,
+                mimeType: relayPath.endsWith(".webm") ? "video/webm" : relayPath.endsWith(".mov") ? "video/quicktime" : "video/mp4",
+            } : await storeGeneratedVideo(result);
+            const nextVideo: GeneratedVideo = {
+                ...stored,
+                id,
+                durationMs: Date.now() - log.createdAt,
+                width: stored.width || 0,
+                height: stored.height || 0,
+            };
+            setResults([{ id: nextVideo.id, status: "success", video: nextVideo }]);
+            if (agentTaskId) updateAgentTask(agentTaskId, { status: "succeeded", successCount: 1, failCount: 0, error: undefined });
+            const archive = relayPath ? new AbortController() : undefined;
+            if (archive) archiveControllers.current.set(log.id, archive);
+            try {
+                await saveLog({ ...log, status: "success", durationMs: nextVideo.durationMs, video: nextVideo, error: undefined });
+            } catch {
+                archiveControllers.current.delete(log.id);
+                message.warning(t("videoWorkbench.historySaveFailed"));
+                return;
             }
+            if (relayPath && archive) {
+                void cacheMuseVideo(nextVideo.storageKey, relayPath, archive.signal)
+                    .catch(() => { /* The logged relay URL remains playable if local storage is unavailable. */ })
+                    .finally(() => archiveControllers.current.delete(log.id));
+            }
+            message.success(t("videoWorkbench.generated"));
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : t("workbench.generationFailed");
-            setResults([{ id: log.id, status: "failed", error: errorMessage }]);
-            if (agentTaskId) updateAgentTask(agentTaskId, { status: "failed", successCount: 0, failCount: 1, error: errorMessage });
-            await saveLog({ ...log, status: "failed", durationMs: Date.now() - log.createdAt, error: errorMessage });
-            message.error(errorMessage);
+            const serverFailed = isVideoTaskFailed(error);
+            const status = serverFailed ? "failed" : "unconfirmed";
+            const messageText = error instanceof Error ? error.message : t("workbench.generationFailed");
+            setResults([{ id: log.id, status, error: messageText }]);
+            if (agentTaskId && serverFailed) updateAgentTask(agentTaskId, { status: "failed", successCount: 0, failCount: 1, error: messageText });
+            await saveLog({ ...log, status, serverFailed, durationMs: Date.now() - log.createdAt, error: messageText });
+            if (serverFailed) message.error(messageText);
+            else message.info(t("videoWorkbench.statusUnconfirmed"));
         } finally {
             activeLogIdsRef.current.delete(log.id);
             if (!activeLogIdsRef.current.size) {
@@ -395,7 +402,9 @@ export default function VideoPage() {
         if (log.config.videoGenerateAudio) updateConfig("videoGenerateAudio", log.config.videoGenerateAudio);
         if (log.config.videoWatermark) updateConfig("videoWatermark", log.config.videoWatermark);
         if (log.config.videoMode) updateConfig("videoMode", log.config.videoMode);
-        setResults(log.status === "pending" ? [{ id: log.id, status: "pending" }] : log.video ? [{ id: log.video.id, status: "success", video: log.video }] : [{ id: log.id, status: "failed", error: log.error || t("workbench.generationFailed") }]);
+        setResults(log.video
+            ? [{ id: log.video.id, status: "success", video: log.video }]
+            : [{ id: log.id, status: log.status === "success" ? "failed" : log.status, error: log.error }]);
         const video = log.video;
         if (video && museVideoRelayPath(video.url)) {
             void resolveMediaUrl(video.storageKey, video.url).then((url) => {
@@ -508,7 +517,12 @@ export default function VideoPage() {
                         </div>
                         {results.length ? (
                             <div className="grid gap-4">
-                                {results.map((result) => (result.status === "success" && result.video ? <ResultVideoCard key={result.id} video={result.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} /> : result.status === "failed" ? <FailedVideoCard key={result.id} error={result.error || t("workbench.generationFailed")} onRetry={retryResult} /> : <PendingVideoCard key={result.id} phase={result.phase} />))}
+                                {results.map((result) => {
+                                    if (result.video) return <ResultVideoCard key={result.id} video={result.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} />;
+                                    if (result.status === "unconfirmed") return <UnconfirmedVideoCard key={result.id} onCheck={() => checkExistingVideo(result.id)} disabled={running} />;
+                                    if (result.status === "failed") return <FailedVideoCard key={result.id} error={result.error || t("workbench.generationFailed")} onRetry={retryResult} />;
+                                    return <PendingVideoCard key={result.id} phase={result.phase} />;
+                                })}
                             </div>
                         ) : (
                             <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 text-center dark:border-stone-700 lg:min-h-[560px]">
@@ -603,6 +617,17 @@ function PendingVideoCard({ phase }: { phase?: GenerationResult["phase"] }) {
     );
 }
 
+function UnconfirmedVideoCard({ onCheck, disabled }: { onCheck: () => void; disabled: boolean }) {
+    const { t } = useTranslation();
+    return (
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-lg border bg-card p-5 text-center">
+            <div className="text-sm font-medium">{t("videoWorkbench.statusUnconfirmed")}</div>
+            <p className="text-sm text-muted-foreground">{t("videoWorkbench.statusUnconfirmedHint")}</p>
+            <Button onClick={onCheck} disabled={disabled}>{t("videoWorkbench.checkExisting")}</Button>
+        </div>
+    );
+}
+
 function FailedVideoCard({ error, onRetry }: { error: string; onRetry: () => void }) {
     const { t } = useTranslation();
     return (
@@ -685,8 +710,8 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
                     </div>
                 </div>
                 <div className="grid justify-items-end gap-2">
-                    <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color={log.status === "success" ? "blue" : log.status === "pending" ? "processing" : "red"}>
-                        {t(`workbench.${log.status === "success" ? "success" : log.status === "pending" ? "generating" : "failed"}`)}
+                    <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color={{ success: "blue", pending: "processing", unconfirmed: "gold", failed: "red" }[log.status]}>
+                        {t({ success: "workbench.success", pending: "workbench.generating", unconfirmed: "videoWorkbench.statusUnconfirmed", failed: "workbench.failed" }[log.status])}
                     </Tag>
                     <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="green">
                         {formatDuration(log.durationMs)}
@@ -732,10 +757,11 @@ async function normalizeLog(log: Partial<GenerationLog>): Promise<GenerationLog>
         size: log.size || config.size || "",
         resolution: normalizeResolution(log.resolution || config.vquality || ""),
         seconds: log.seconds || config.videoSeconds || "",
-        status: log.status || "success",
+        status: log.status === "failed" && log.task?.id && log.task.provider !== "plugin" && !log.serverFailed ? "unconfirmed" : log.status || "success",
         task: log.task,
         video,
         error: log.error,
+        serverFailed: log.serverFailed,
     };
 }
 
@@ -836,6 +862,3 @@ function normalizeResolution(value: string) {
     return normalizeVideoResolutionValue(value);
 }
 
-function delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}

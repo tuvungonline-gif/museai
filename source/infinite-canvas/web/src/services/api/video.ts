@@ -12,10 +12,11 @@ import { runModelPlugin } from "./model-plugin";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
-type VideoResponse = { id: string; status?: string; error?: { message?: string }; url?: string; result_url?: string; video_url?: string; content?: { video_url?: string; url?: string } | null; result?: { bytes?: number } };
+type VideoResponse = { id: string; status?: string; error?: { message?: string } | string; url?: string; result_url?: string; video_url?: string; content?: { video_url?: string; url?: string } | null; result?: { bytes?: number } };
 type ApiVideoResponse = VideoResponse | { code?: number | string; data?: VideoResponse | null; msg?: string; message?: string; error?: { message?: string } };
 type ApiEnvelope<T> = T | { code?: number | string; data?: T | null; msg?: string; message?: string; error?: { message?: string } };
 type RequestOptions = { signal?: AbortSignal };
+type VideoPollingOptions = RequestOptions & { onPending?: (phase: VideoTaskPhase | undefined) => void };
 type VideoMediaOptions = RequestOptions & { videos?: ReferenceVideo[]; audios?: ReferenceAudio[] };
 const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
 
@@ -28,7 +29,8 @@ type GeminiVideoOperation = {
     error?: { message?: string };
     response?: { generateVideoResponse?: { generatedSamples?: Array<{ video?: { uri?: string } }> } };
 };
-export type VideoGenerationTaskState = { status: "pending"; phase?: "queued" | "processing" } | { status: "completed"; result: VideoGenerationResult } | { status: "failed"; error: string };
+export type VideoTaskPhase = "queued" | "processing";
+export type VideoGenerationTaskState = { status: "pending"; phase?: VideoTaskPhase } | { status: "completed"; result: VideoGenerationResult } | { status: "failed"; error: string };
 
 /** Results for scripted (plugin) video models, which run their own create+poll in one shot at task creation. */
 const pluginVideoResults = new Map<string, VideoGenerationResult>();
@@ -48,7 +50,7 @@ export async function requestVideoGeneration(config: AiConfig, prompt: string, r
     return waitForVideoGenerationTask(config, await createVideoGenerationTask(config, prompt, references, options), options);
 }
 
-export async function waitForVideoGenerationTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationResult> {
+export async function waitForVideoGenerationTask(config: AiConfig, task: VideoGenerationTask, options?: VideoPollingOptions): Promise<VideoGenerationResult> {
     // Muse 视频最长 10 分钟，轮询上限同步放宽到 10 分钟。
     const maxAttempts = 240;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -56,6 +58,7 @@ export async function waitForVideoGenerationTask(config: AiConfig, task: VideoGe
         const state = await pollVideoGenerationTask(config, task, options);
         if (state.status === "completed") return state.result;
         if (state.status === "failed") throw videoTaskFailed(state.error);
+        options?.onPending?.(state.phase);
         if (attempt === maxAttempts - 1) throw new Error(apiText("videoTimeout", { provider: "" }));
         await delay(2500, options?.signal);
     }
@@ -199,6 +202,9 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
 async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
     try {
         const video = unwrapVideoResponse((await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${task.id}`), { headers: aiHeaders(config), signal: options?.signal })).data);
+        if (video.status === "failed" || video.status === "cancelled" || video.status === "canceled") {
+            return { status: "failed", error: readApiErrorMessage(video.error) || apiText("videoGenerationFailed") };
+        }
         const url = videoResultUrl(video);
         if (url) return { status: "completed", result: { ...await videoResultFromUrl(url, options), bytes: video.result?.bytes } };
         if (video.status === "completed") {
@@ -206,7 +212,6 @@ async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, 
             await assertVideoBlob(content.data);
             return { status: "completed", result: { blob: content.data } };
         }
-        if (video.status === "failed" || video.status === "cancelled") return { status: "failed", error: readApiErrorMessage(video.error?.message) || apiText("videoGenerationFailed") };
         const phase = isMuseRelayBase(config.baseUrl) && (video.status === "queued" || video.status === "processing") ? video.status : undefined;
         return { status: "pending", phase };
     } catch (error) {

@@ -2,13 +2,13 @@
 
 ## Unreleased
 
+- [Sửa] Trạm tạo video dùng chung giới hạn theo dõi với Canvas và cho phép kiểm tra lại tác vụ cũ khi trình duyệt chưa xác nhận được kết quả.
+
 - [优化] Muse 视频请求不再重复上传参考图，成品可直接播放，后台保存本地副本。
 
 - [修复] 修复移动设备上 IBEE 视频的播放与下载链接，并暂时隐藏 Agent 入口。
 
 - [调整] 首页以视频和图片生成入口替代画布介绍，保留 IBEE 品牌标识。
-
-- [调整] Áp dụng nhận diện IBEE, bảng màu Light Tech Blue, logo SVG và icon PWA cho giao diện Canvas và trang thành viên.
 
 - [调整] Thay nút phiên bản/GitHub bằng Quản lý tài khoản; ẩn Cài đặt với thành viên và bổ sung hồ sơ trên hệ thống tài khoản hiện có.
 
